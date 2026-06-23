@@ -1,0 +1,60 @@
+name: release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          registry-url: "https://registry.npmjs.org"
+      - name: Install dependencies
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Pack tarball into dist/
+        run: |
+          mkdir -p dist
+          npm pack --pack-destination dist
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum *.tgz > checksums.txt
+          cat checksums.txt
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: flowcast-npm-pack
+          path: |
+            dist/*.tgz
+            dist/checksums.txt
+      # publish_repo.sh attaches dist/* to the GitHub Release.
+
+  publish-npm:
+    runs-on: ubuntu-latest
+    needs: pack
+    # Opt-in: set repository variable PUBLISH_NPM=true and add an NPM_TOKEN secret.
+    if: ${{ vars.PUBLISH_NPM == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          registry-url: "https://registry.npmjs.org"
+      - run: npm ci
+      - run: npm run build
+      - name: Publish to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -1,0 +1,61 @@
+{
+  "name": "flowcast",
+  "version": "0.1.0",
+  "description": "Record a browser walkthrough once, replay it forever, self-heal when the site changes — a parameterized, self-healing flow-asset primitive for browser Agents.",
+  "type": "module",
+  "license": "MIT",
+  "author": "SuperMarioYL",
+  "homepage": "https://github.com/SuperMarioYL/flowcast#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SuperMarioYL/flowcast.git"
+  },
+  "bugs": {
+    "url": "https://github.com/SuperMarioYL/flowcast/issues"
+  },
+  "keywords": [
+    "browser",
+    "agent",
+    "playwright",
+    "self-healing",
+    "replay",
+    "automation",
+    "flow-asset",
+    "selector"
+  ],
+  "bin": {
+    "flowcast": "dist/cli.js"
+  },
+  "main": "dist/cli.js",
+  "files": [
+    "dist",
+    "schema",
+    "examples",
+    "assets",
+    "README.md",
+    "README.en.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/cli.ts",
+    "flowcast": "tsx src/cli.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test --import tsx 'test/**/*.test.ts'",
+    "prepublishOnly": "npm run build",
+    "postinstall": "playwright install chromium || true"
+  },
+  "dependencies": {
+    "playwright": "^1.48",
+    "commander": "^12",
+    "zod": "^3.23"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "tsx": "^4.19",
+    "typescript": "^5.6"
+  }
+}

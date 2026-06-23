@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 300" width="880" height="300"
+     font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif"
+     role="img" aria-label="FlowCast — 录一次，永久重放，改版自愈">
+  <defs>
+    <linearGradient id="hg-cl" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5E5CE6"/>
+      <stop offset="1" stop-color="#10A37F"/>
+    </linearGradient>
+    <marker id="hah-cl" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#B9B9C2"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="880" height="300" fill="#F5F5F7"/>
+
+  <text x="60" y="120" font-size="64" font-weight="700" fill="url(#hg-cl)">FlowCast</text>
+  <text x="62" y="160" font-size="20" font-weight="500" fill="#1D1D1F">
+    把一次浏览器走查录成可复用资产——录一次，永久重放，站点改版自动自愈。
+  </text>
+  <text x="62" y="190" font-size="14" font-weight="500" fill="#6E6E73">
+    面向浏览器 Agent 的参数化、可自愈流程资产原语——正常重放零 LLM 调用。
+  </text>
+
+  <g>
+    <rect x="60"  y="225" width="150" height="48" rx="14" fill="#5E5CE6" fill-opacity="0.10" stroke="#5E5CE6" stroke-width="1.5"/>
+    <text x="135" y="254" text-anchor="middle" font-size="15" font-weight="600" fill="#4B3FC4">录一次</text>
+
+    <line x1="216" y1="249" x2="262" y2="249" stroke="#C9C9D0" stroke-width="1.5" marker-end="url(#hah-cl)"/>
+
+    <rect x="268" y="225" width="160" height="48" rx="14" fill="#10A37F" fill-opacity="0.10" stroke="#10A37F" stroke-width="1.5"/>
+    <text x="348" y="254" text-anchor="middle" font-size="15" font-weight="600" fill="#0B6B53">永久重放</text>
+
+    <line x1="434" y1="249" x2="480" y2="249" stroke="#C9C9D0" stroke-width="1.5" marker-end="url(#hah-cl)"/>
+
+    <rect x="486" y="225" width="170" height="48" rx="14" fill="#0071E3" fill-opacity="0.10" stroke="#0071E3" stroke-width="1.5"/>
+    <text x="571" y="254" text-anchor="middle" font-size="15" font-weight="600" fill="#0A4F9E">改版自愈</text>
+  </g>
+</svg>

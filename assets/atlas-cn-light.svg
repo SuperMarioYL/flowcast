@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 380" width="880" height="380"
+     font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif"
+     role="img" aria-label="架构：record 为每步捕获 SelectorBundle 写入 .flow.json 资产；replay 零 LLM 重放；selector 漂移时 heal 用你的 LLM key 对实时 DOM 重定位并回写">
+  <defs>
+    <marker id="ah-cl" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#B9B9C2"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="880" height="380" fill="#F5F5F7"/>
+
+  <text x="40" y="34" font-size="13" font-weight="600" fill="#6E6E73">flowcast — 单个 Node 进程 + 一个 Playwright Chromium · 无服务端 · 无数据库</text>
+
+  <g stroke="#C9C9D0" stroke-width="1.5" fill="none">
+    <line x1="190" y1="100" x2="250" y2="100" marker-end="url(#ah-cl)"/>
+    <line x1="430" y1="100" x2="490" y2="100" marker-end="url(#ah-cl)"/>
+    <line x1="575" y1="140" x2="575" y2="210" marker-end="url(#ah-cl)"/>
+    <line x1="490" y1="248" x2="430" y2="248" marker-end="url(#ah-cl)"/>
+    <line x1="250" y1="248" x2="190" y2="248" marker-end="url(#ah-cl)"/>
+    <line x1="340" y1="286" x2="340" y2="330" marker-end="url(#ah-cl)"/>
+    <line x1="500" y1="348" x2="700" y2="348" stroke-dasharray="5 4"/>
+    <line x1="700" y1="348" x2="700" y2="140" stroke-dasharray="5 4" marker-end="url(#ah-cl)"/>
+  </g>
+
+  <g>
+    <rect x="40" y="72" width="150" height="56" rx="15" fill="#5E5CE6" fill-opacity="0.10" stroke="#5E5CE6" stroke-width="1.5"/>
+    <text x="115" y="98" text-anchor="middle" font-size="14" font-weight="600" fill="#4B3FC4">CLI · record</text>
+    <text x="115" y="116" text-anchor="middle" font-size="11" fill="#6E6E73">commander</text>
+
+    <rect x="250" y="72" width="180" height="56" rx="15" fill="#5E5CE6" fill-opacity="0.10" stroke="#5E5CE6" stroke-width="1.5"/>
+    <text x="340" y="96" text-anchor="middle" font-size="14" font-weight="600" fill="#4B3FC4">Chromium + 覆盖层</text>
+    <text x="340" y="115" text-anchor="middle" font-size="11" fill="#6E6E73">每步捕获 SelectorBundle</text>
+  </g>
+
+  <g>
+    <rect x="490" y="72" width="170" height="68" rx="15" fill="#0071E3" fill-opacity="0.10" stroke="#0071E3" stroke-width="1.5"/>
+    <text x="575" y="98" text-anchor="middle" font-size="14" font-weight="700" fill="#0A4F9E">.flow.json 资产</text>
+    <text x="575" y="116" text-anchor="middle" font-size="11" fill="#6E6E73">steps · params · healHistory</text>
+    <text x="575" y="131" text-anchor="middle" font-size="11" fill="#6E6E73">Zod / JSON-Schema 校验</text>
+  </g>
+
+  <g>
+    <rect x="490" y="220" width="170" height="56" rx="15" fill="#10A37F" fill-opacity="0.10" stroke="#10A37F" stroke-width="1.5"/>
+    <text x="575" y="244" text-anchor="middle" font-size="14" font-weight="600" fill="#0B6B53">params · 注入</text>
+    <text x="575" y="263" text-anchor="middle" font-size="11" fill="#6E6E73">{{param}} → 值</text>
+
+    <rect x="250" y="220" width="180" height="56" rx="15" fill="#10A37F" fill-opacity="0.10" stroke="#10A37F" stroke-width="1.5"/>
+    <text x="340" y="244" text-anchor="middle" font-size="14" font-weight="600" fill="#0B6B53">replay · 定位</text>
+    <text x="340" y="263" text-anchor="middle" font-size="11" fill="#6E6E73">css→xpath→role→text · 0 LLM</text>
+
+    <rect x="40" y="220" width="150" height="56" rx="15" fill="#10A37F" fill-opacity="0.10" stroke="#10A37F" stroke-width="1.5"/>
+    <text x="115" y="244" text-anchor="middle" font-size="14" font-weight="600" fill="#0B6B53">实时 Chromium</text>
+    <text x="115" y="263" text-anchor="middle" font-size="11" fill="#6E6E73">确定性重放</text>
+  </g>
+
+  <g>
+    <rect x="250" y="330" width="250" height="36" rx="14" fill="#0071E3" fill-opacity="0.10" stroke="#0071E3" stroke-width="1.5"/>
+    <text x="375" y="353" text-anchor="middle" font-size="13" font-weight="600" fill="#0A4F9E">heal · 重定位（你的 LLM key，仅 --heal）</text>
+  </g>
+  <text x="710" y="250" font-size="11" fill="#6E6E73">虚线 = heal</text>
+  <text x="710" y="266" font-size="11" fill="#6E6E73">回写资产</text>
+</svg>

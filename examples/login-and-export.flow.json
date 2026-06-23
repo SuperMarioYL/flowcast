@@ -1,0 +1,88 @@
+{
+  "version": "1",
+  "name": "login-and-export",
+  "description": "Log in to a demo site, land on the secure area, and read the success banner. Targets the stable public fixture at the-internet.herokuapp.com so it replays out of the box.",
+  "recordedAt": "2026-06-23T00:00:00.000Z",
+  "params": [
+    {
+      "key": "username",
+      "default": "tomsmith",
+      "required": true,
+      "description": "Login username for the demo site"
+    },
+    {
+      "key": "password",
+      "default": "SuperSecretPassword!",
+      "required": true,
+      "description": "Login password for the demo site"
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "action": "goto",
+      "url": "https://the-internet.herokuapp.com/login",
+      "label": "open login page"
+    },
+    {
+      "id": "s2",
+      "action": "fill",
+      "target": {
+        "css": "#username",
+        "xpath": "//*[@id=\"username\"]",
+        "role": "textbox",
+        "name": "Username",
+        "tagName": "input"
+      },
+      "value": "{{username}}",
+      "label": "fill username"
+    },
+    {
+      "id": "s3",
+      "action": "fill",
+      "target": {
+        "css": "#password",
+        "xpath": "//*[@id=\"password\"]",
+        "role": "textbox",
+        "name": "Password",
+        "tagName": "input"
+      },
+      "value": "{{password}}",
+      "label": "fill password"
+    },
+    {
+      "id": "s4",
+      "action": "click",
+      "target": {
+        "css": "button[type=\"submit\"]",
+        "xpath": "//button[@type=\"submit\"]",
+        "role": "button",
+        "name": "Login",
+        "text": "Login",
+        "tagName": "button"
+      },
+      "label": "click Login"
+    },
+    {
+      "id": "s5",
+      "action": "waitFor",
+      "target": {
+        "css": "#flash",
+        "xpath": "//*[@id=\"flash\"]",
+        "text": "You logged into a secure area!",
+        "tagName": "div"
+      },
+      "label": "wait for success banner"
+    },
+    {
+      "id": "s6",
+      "action": "extract",
+      "target": {
+        "css": ".subheader",
+        "xpath": "//div[contains(@class,\"subheader\")]",
+        "tagName": "h2"
+      },
+      "label": "read secure-area heading"
+    }
+  ]
+}

@@ -1,0 +1,157 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { createServer, type Server } from "node:http";
+import type { AddressInfo } from "node:net";
+
+import {
+  buildHealPrompt,
+  createHealHook,
+  parseHealChoice,
+  snapshotCandidates,
+} from "../src/heal.js";
+import { replayAsset } from "../src/replay.js";
+import type { FlowAsset, SelectorBundle, Step } from "../src/asset.js";
+
+// --- Pure-logic tests (no browser, no network) -------------------------------
+
+test("parseHealChoice reads a bare JSON object", () => {
+  const c = parseHealChoice('{"index": 2, "reason": "same button"}', 5);
+  assert.deepEqual(c, { index: 2, reason: "same button" });
+});
+
+test("parseHealChoice tolerates ```json fences and surrounding prose", () => {
+  const reply = 'Sure!\n```json\n{"index": 0}\n```\nDone.';
+  assert.deepEqual(parseHealChoice(reply, 3), { index: 0, reason: undefined });
+});
+
+test("parseHealChoice rejects out-of-range / non-integer indices", () => {
+  assert.equal(parseHealChoice('{"index": 9}', 3), null);
+  assert.equal(parseHealChoice('{"index": "x"}', 3), null);
+  assert.equal(parseHealChoice("no json here", 3), null);
+});
+
+test("buildHealPrompt embeds the failed selector and candidate list", () => {
+  const step: Step = { id: "s1", action: "click", target: { css: "#old" }, label: "click Login" };
+  const prompt = buildHealPrompt(step, { css: "#old" }, [
+    { index: 0, bundle: { css: "#new", role: "button", name: "Login" }, text: "Login" },
+  ]);
+  assert.match(prompt, /click Login/);
+  assert.match(prompt, /#old/);
+  assert.match(prompt, /"index": 0/);
+});
+
+// --- Browser-backed heal against a local fixture -----------------------------
+
+const FIXTURE_HTML = `<!doctype html><html><body>
+  <h1 id="title">Login</h1>
+  <form id="f" onsubmit="event.preventDefault();document.getElementById('panel').style.display='block';">
+    <input id="u" type="text" aria-label="Username" />
+    <input id="p" type="password" aria-label="Password" />
+    <!-- the "Sign in" button moved + got a new id, simulating a redesign -->
+    <button id="submit-v2" type="submit">Sign in</button>
+  </form>
+  <div id="panel" style="display:none"><h2 class="heading">Secure Area</h2></div>
+</body></html>`;
+
+async function startFixture(): Promise<{ server: Server; url: string }> {
+  const server = createServer((_req, res) => {
+    res.writeHead(200, { "content-type": "text/html" });
+    res.end(FIXTURE_HTML);
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const port = (server.address() as AddressInfo).port;
+  return { server, url: `http://127.0.0.1:${port}/` };
+}
+
+async function chromiumAvailable(): Promise<boolean> {
+  try {
+    const { chromium } = await import("playwright");
+    const b = await chromium.launch({ headless: true });
+    await b.close();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+test("snapshotCandidates collects redundant bundles for the live DOM", async (t) => {
+  if (!(await chromiumAvailable())) {
+    t.skip("Chromium not installed (run: npx playwright install chromium)");
+    return;
+  }
+  const { chromium } = await import("playwright");
+  const { server, url } = await startFixture();
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage();
+    await page.goto(url);
+    const cands = await snapshotCandidates(page, "click");
+    assert.ok(cands.length >= 1);
+    const btn = cands.find((c) => c.bundle.text === "Sign in");
+    assert.ok(btn, "expected the Sign in button among candidates");
+    assert.equal(btn?.bundle.role, "button");
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test("replay --heal self-repairs a drifted selector and records healHistory", async (t) => {
+  if (!(await chromiumAvailable())) {
+    t.skip("Chromium not installed");
+    return;
+  }
+  const { server, url } = await startFixture();
+  try {
+    // The click step points at the OLD id (#login-btn) which no longer exists;
+    // the live button is now #submit-v2. A stubbed LLM picks it by text match.
+    const asset: FlowAsset = {
+      version: "1",
+      name: "heal-fixture",
+      params: [],
+      steps: [
+        { id: "s1", action: "goto", url },
+        { id: "s2", action: "fill", target: { css: "#u" }, value: "alice" },
+        {
+          id: "s3",
+          action: "click",
+          // All clues are stale (old id + old label "Log In") so every clue
+          // misses against the redesigned DOM, forcing the heal path.
+          target: { css: "#login-btn", role: "button", name: "Log In", text: "Log In" },
+          label: "click the login button",
+        },
+        { id: "s4", action: "waitFor", target: { css: ".heading", text: "Secure Area" } },
+      ],
+    };
+
+    // Stub chat: parse the candidate list out of the prompt and choose the
+    // entry whose text is "Sign in" (what a real LLM would do here).
+    const heal = createHealHook({
+      log: () => {},
+      chat: async (prompt: string) => {
+        const start = prompt.indexOf("LIVE DOM CANDIDATES:");
+        const jsonStart = prompt.indexOf("[", start);
+        const jsonEnd = prompt.indexOf("]", jsonStart);
+        const list = JSON.parse(prompt.slice(jsonStart, jsonEnd + 1)) as Array<{
+          index: number;
+          text?: string;
+          name?: string;
+        }>;
+        const pick = list.find((c) => c.text === "Sign in" || c.name === "Sign in") ?? list[0];
+        return JSON.stringify({ index: pick.index, reason: "text match" });
+      },
+    });
+
+    const result = await replayAsset(asset, { headless: true, heal, log: () => {} });
+    assert.equal(result.ok, true);
+    assert.equal(result.healed, true);
+    const clickStep = asset.steps.find((s) => s.id === "s3")!;
+    assert.ok(clickStep.healHistory && clickStep.healHistory.length === 1);
+    assert.equal(clickStep.healHistory[0].from.css, "#login-btn");
+    // The healed bundle should now resolve to the real button.
+    const healedBundle: SelectorBundle = clickStep.target!;
+    assert.ok(healedBundle.css || healedBundle.role);
+  } finally {
+    server.close();
+  }
+});
