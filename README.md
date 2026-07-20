@@ -11,7 +11,7 @@
 <p align="center"><sub>把一次浏览器演示固化为可自愈、可重放的 Agent 流程资产——录一次，永久重放，站点改版自动重定位。</sub></p>
 
 <p align="center">
-  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License"></a>
   <img src="https://img.shields.io/github/v/release/SuperMarioYL/flowcast" alt="Latest release">
   <a href="https://github.com/SuperMarioYL/flowcast/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/SuperMarioYL/flowcast/ci.yml?branch=main&label=CI" alt="CI"></a>
   <img src="https://img.shields.io/badge/node-%E2%89%A522-339933?logo=node.js&logoColor=white" alt="Node >= 22">
