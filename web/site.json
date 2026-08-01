@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "name": "flowcast",
+  "github": "https://github.com/SuperMarioYL/flowcast",
+  "host": "flowcast.lei6393.com",
+  "lang": { "primary": "zh", "toggle": true },
+  "accent": ["#5e5ce6", "#0071e3", "#10a37f"],
+  "hero": {
+    "eyebrow": { "zh": "录一次 · 永久重放 · 改版自愈", "en": "Record once · Replay forever · Self-heals on change" },
+    "headline": {
+      "zh": "把一次浏览器走查\n变成永远能重放的能力",
+      "en": "Turn one browser walkthrough\ninto a capability you can replay forever"
+    },
+    "sub": {
+      "zh": "录一次人工流程，结晶成参数化资产；站点改版时自动重定位，不再每次重新推理。",
+      "en": "Record a human flow once into a parameterized asset; it re-locates itself when the site changes — no re-inference every run."
+    },
+    "command": "npx flowcast record ./login.flow.json",
+    "cta": { "zh": "开始录制", "en": "Start recording" },
+    "ctaGithub": { "zh": "在 GitHub 查看", "en": "View on GitHub" },
+    "scroll": { "zh": "看看它怎么做到", "en": "See how it works" }
+  },
+  "advantages": [
+    {
+      "title": { "zh": "录一次，永久重放", "en": "Record once, replay forever" },
+      "body": {
+        "zh": "人工走一遍流程，自动结晶成可复用资产；重放零推理调用，每次确定性跑通。",
+        "en": "Walk through a flow once; it becomes a reusable asset. Replay makes zero inference calls — deterministic every time."
+      },
+      "chips": ["› 零 LLM 重放", "› 参数化 {{param}}"]
+    },
+    {
+      "title": { "zh": "改版不崩，自动自愈", "en": "Site changed? It heals itself" },
+      "body": {
+        "zh": "selector 漂移时，用你自己的 LLM key 对实时 DOM 重定位，修好资产并继续；越用越稳。",
+        "en": "When a selector drifts, it re-locates against the live DOM with your own LLM key, repairs the asset, and continues — it gets sturdier the more you use it."
+      },
+      "chips": ["› 用你自己的 key", "› 回写自愈记录"]
+    },
+    {
+      "title": { "zh": "本地编辑，参数化流程", "en": "Parameterize your flow locally" },
+      "body": {
+        "zh": "本地 UI 把硬编码值改成 {{param}}，删多余步，声明参数；一份资产多人多账号复用。",
+        "en": "A local UI turns hard-coded values into {{param}}, prunes steps, declares params — one asset, many accounts, many people."
+      },
+      "chips": ["› 本地编辑器", "› 一份资产多账号"]
+    },
+    {
+      "title": { "zh": "CI 里校验，资产即制品", "en": "Lint assets in CI" },
+      "body": {
+        "zh": "不启浏览器、不调 LLM 即校验 .flow.json 结构与参数，无效则非零退出——把流程资产当一等制品管理。",
+        "en": "Validate a .flow.json's structure and params with no browser and no LLM — non-zero exit on failure, so flows are first-class artifacts you can gate in CI."
+      },
+      "chips": ["› 零成本 lint", "› CI 友好退出码"]
+    }
+  ],
+  "scene": { "kind": "particle-field" },
+  "cta": {
+    "headline": { "zh": "录一次，告别每次重推", "en": "Record once. Stop re-inferring every run." },
+    "sub": {
+      "zh": "把今天的演示，变成明天还能跑的能力。",
+      "en": "Turn today's demo into a capability that still runs tomorrow."
+    },
+    "button": { "zh": "开始录制", "en": "Start recording" }
+  },
+  "footer": { "tag": { "zh": "Apache-2.0 · 本地优先 · 你的 LLM key", "en": "Apache-2.0 · Local-first · Your own LLM key" } }
+}
