@@ -63,10 +63,7 @@ export function buildSteps(timeline: readonly TimelineEvent[]): Step[] {
     if (ev.action === "fill") {
       const last = steps[steps.length - 1];
       const sameTarget =
-        last &&
-        last.action === "fill" &&
-        sameSelector(last.target?.css, ev.target.css) &&
-        sameSelector(last.target?.xpath, ev.target.xpath);
+        last && last.action === "fill" && sameBundle(last.target, ev.target);
       if (sameTarget && last) {
         last.value = ev.value ?? "";
         last.label = ev.label ?? last.label;
@@ -105,8 +102,56 @@ export function buildSteps(timeline: readonly TimelineEvent[]): Step[] {
   return steps;
 }
 
-function sameSelector(a?: string, b?: string): boolean {
-  return a !== undefined && a === b;
+/** Structural shape shared by a recorded Step target and a CapturedEvent target. */
+type BundleLike = {
+  css?: string;
+  xpath?: string;
+  role?: string;
+  name?: string;
+  text?: string;
+  nthOfType?: number;
+  tagName?: string;
+};
+
+/**
+ * Decide whether two selector bundles point at the same element, so consecutive
+ * `fill` events collapse to the last value. Prefers css / xpath (the
+ * authoritative record-time clues); when BOTH sides lack css AND xpath (e.g. a
+ * textbox captured only by role+name/text — no id, no stable class), falls back
+ * to role+name, then text, then tagName+nthOfType. Without this fallback every
+ * keystroke on a css-less element became its own fill step, corrupting the asset.
+ */
+function sameBundle(
+  a: BundleLike | undefined,
+  b: BundleLike | undefined,
+): boolean {
+  if (!a || !b) return false;
+  // Authoritative clue: if either side has css, it must match.
+  if (a.css !== undefined || b.css !== undefined) {
+    return a.css !== undefined && a.css === b.css;
+  }
+  if (a.xpath !== undefined || b.xpath !== undefined) {
+    return a.xpath !== undefined && a.xpath === b.xpath;
+  }
+  // No css/xpath on either side: fall back to the next distinguishing clue.
+  if (
+    a.role !== undefined &&
+    a.role === b.role &&
+    a.name !== undefined &&
+    a.name === b.name
+  ) {
+    return true;
+  }
+  if (a.text !== undefined && a.text === b.text) return true;
+  if (
+    a.tagName !== undefined &&
+    a.tagName === b.tagName &&
+    a.nthOfType !== undefined &&
+    a.nthOfType === b.nthOfType
+  ) {
+    return true;
+  }
+  return false;
 }
 
 /** Assemble a complete, validated asset from a name and a timeline. */

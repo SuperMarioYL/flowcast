@@ -88,7 +88,7 @@ Extracted:
 
 ## <img src="https://api.iconify.design/tabler:terminal-2.svg?color=%230071E3&width=24" height="22" align="absmiddle" alt=""> 用法
 
-FlowCast 有三个子命令，对应"录 → 编辑参数化 → 重放/自愈"闭环：
+FlowCast 有四个子命令，对应"录 → 编辑参数化 → 重放/自愈 → 校验"闭环：
 
 ```bash
 # 1. 录一次：起 Chromium + 覆盖层，人工走一遍流程，关窗口即存为资产
@@ -103,9 +103,12 @@ npx flowcast replay ./login.flow.json --param account=alice
 # 4. 自愈：站点改版导致 selector 失效时，用你自己的 LLM key 对实时 DOM 重定位并回写资产
 export FLOWCAST_LLM_API_KEY=sk-...          # 复用你已有的 key，不内置任何模型
 npx flowcast replay ./login.flow.json --heal
+
+# 5. 校验：不启浏览器/LLM 即 lint 资产结构与参数，CI 友好（无效则非零退出）
+npx flowcast validate ./login.flow.json
 ```
 
-更多可跑示例见 [`examples/`](./examples)。`record` / `replay` 支持 `--headed` 实时观察浏览器；`replay --heal --no-write` 可只在内存里自愈、不回写磁盘。
+更多可跑示例见 [`examples/`](./examples)。`record` / `replay` 支持 `--headed` 实时观察浏览器；`replay --heal --no-write` 可只在内存里自愈、不回写磁盘；`validate` 零成本可在 CI 里把 `.flow.json` 当一等制品 lint。
 
 ## <img src="https://api.iconify.design/tabler:photo.svg?color=%230071E3&width=24" height="22" align="absmiddle" alt=""> Demo
 
@@ -160,6 +163,9 @@ FlowCast 不和它们抢"通用 Agent 推理"——而是补在它们下游：�
 - [x] **m1 — record & replay**：录一次多步走查 → 写出符合 schema 的 `.flow.json`，零重推理重放成功
 - [x] **m2 — parameterize & heal**：编辑 UI 参数化捕获步骤；`replay --heal` 对实时 DOM 自愈重定位并回写
 - [x] **m3 — polished demo & example**：自带可跑样例资产 + demo 脚本 + 双语 README
+- [x] **v0.2.0 fix — replay timeout budget**：`resolveLocator` 在多线索下严格遵循 per-step timeout（共享 deadline，不再 N×500 超时）
+- [x] **v0.2.0 fix — recorder fill collapse**：无 css 元素上正确合并连续 fill，资产不再被按键污染
+- [x] **v0.2.0 m4 — validate**：`flowcast validate` 不启浏览器/LLM 即 lint `.flow.json`，CI 友好退出码
 - [ ] 托管 SaaS：资产云托管 · 定时调度 · 跨人共享 · 运行历史 / 失败告警
 - [ ] 团队版：协作 · 权限 · 审计日志
 

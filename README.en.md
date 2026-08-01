@@ -88,7 +88,7 @@ Extracted:
 
 ## <img src="https://api.iconify.design/tabler:terminal-2.svg?color=%230071E3&width=24" height="22" align="absmiddle" alt=""> Usage
 
-FlowCast has three subcommands for the record → parameterize → replay/heal loop:
+FlowCast has four subcommands for the record → parameterize → replay/heal → validate loop:
 
 ```bash
 # 1. Record once: launch Chromium + overlay, walk the flow, close the window to save
@@ -103,9 +103,12 @@ npx flowcast replay ./login.flow.json --param account=alice
 # 4. Self-heal: when a redesign breaks a selector, re-locate against the live DOM with YOUR LLM key
 export FLOWCAST_LLM_API_KEY=sk-...          # reuses your existing key — no bundled model
 npx flowcast replay ./login.flow.json --heal
+
+# 5. Validate: lint the asset's structure + params with no browser and no LLM (CI-friendly, non-zero exit on invalid)
+npx flowcast validate ./login.flow.json
 ```
 
-See more runnable examples in [`examples/`](./examples). `record` / `replay` accept `--headed` to watch the browser; `replay --heal --no-write` heals in memory only without writing the asset back.
+See more runnable examples in [`examples/`](./examples). `record` / `replay` accept `--headed` to watch the browser; `replay --heal --no-write` heals in memory only without writing the asset back; `validate` is zero-cost and lets you lint a `.flow.json` as a first-class artifact in CI.
 
 ## <img src="https://api.iconify.design/tabler:photo.svg?color=%230071E3&width=24" height="22" align="absmiddle" alt=""> Demo
 
@@ -160,6 +163,9 @@ The core (capture / replay primitive + parameterization UI) is **OSS-first and f
 - [x] **m1 — record & replay**: record a multi-step walkthrough → schema-valid `.flow.json`, replay with zero re-inference
 - [x] **m2 — parameterize & heal**: an edit UI to parameterize captured steps; `replay --heal` self-heals a drifted selector against the live DOM and writes it back
 - [x] **m3 — polished demo & example**: a runnable bundled sample asset + demo script + bilingual README
+- [x] **v0.2.0 fix — replay timeout budget**: `resolveLocator` now honors the per-step timeout across multiple clues (shared deadline, no more N×500 overrun)
+- [x] **v0.2.0 fix — recorder fill collapse**: consecutive fills on css-less elements now collapse correctly, so assets aren't polluted by per-keystroke steps
+- [x] **v0.2.0 m4 — validate**: `flowcast validate` lints a `.flow.json` with no browser/LLM, CI-friendly exit code
 - [ ] Hosted SaaS: asset cloud hosting · scheduling · cross-person sharing · run history / failure alerts
 - [ ] Team tier: collaboration · permissions · audit log
 

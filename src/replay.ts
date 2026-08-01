@@ -107,16 +107,28 @@ export async function resolveLocator(
   timeoutMs: number,
 ): Promise<Locator> {
   const candidates = candidateLocators(page, bundle);
-  // Budget the timeout across candidates so a single slow miss doesn't eat all.
-  const per = Math.max(500, Math.floor(timeoutMs / Math.max(1, candidates.length)));
+  // Share ONE deadline across all candidate clues so the per-step timeout is
+  // honored even when several clues miss. Previously each clue got at least
+  // 500ms (Math.max(500, budget/N)), so N clues could overrun the configured
+  // timeout by up to N*500ms — which on the --heal retry path (resolveLocator
+  // is called twice) is the exact self-heal stall the market forecast flags.
+  const start = Date.now();
+  const MIN_PROBE_MS = 50; // tiny floor so a near-deadline clue still gets one quick check
+  let tried = 0;
   for (const loc of candidates) {
+    tried++;
+    const remaining = timeoutMs - (Date.now() - start);
+    if (remaining <= 0) break;
+    const candidatesLeft = candidates.length - (tried - 1);
+    // Equal share of the REMAINING budget among the clues still to try.
+    const per = Math.max(MIN_PROBE_MS, Math.floor(remaining / candidatesLeft));
     try {
       const first = loc.first();
       await first.waitFor({ state: "attached", timeout: per });
       const count = await loc.count();
       if (count >= 1) return first;
     } catch {
-      // try the next clue
+      // try the next clue within the remaining budget
     }
   }
   throw new SelectorMissError(step, bundle);

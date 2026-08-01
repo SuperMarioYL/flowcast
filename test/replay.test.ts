@@ -168,3 +168,44 @@ test("resolveLocator throws SelectorMissError when every clue misses", async (t)
     server.close();
   }
 });
+
+test("resolveLocator honors the per-step timeout across multiple clues (no N*500 overrun)", async (t) => {
+  if (!(await chromiumAvailable())) {
+    t.skip("Chromium not installed");
+    return;
+  }
+  const { chromium } = await import("playwright");
+  const { server, url } = await startFixture();
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage();
+    await page.goto(url);
+    // A 4-clue bundle that all miss. Old code budgeted each clue
+    // Math.max(500, floor(timeout/4)) = 500ms -> ~2000ms total. The fix shares
+    // a single deadline so the step must fail within roughly the configured
+    // timeout, never N*500.
+    const bundle: SelectorBundle = {
+      css: "#nope-a",
+      xpath: "//nopeB",
+      role: "button",
+      name: "Nope",
+      text: "definitely-absent",
+    };
+    const step: Step = { id: "s1", action: "click", target: bundle };
+    const timeoutMs = 1000;
+    const start = Date.now();
+    await assert.rejects(
+      () => resolveLocator(page, step, bundle, timeoutMs),
+      SelectorMissError,
+    );
+    const elapsed = Date.now() - start;
+    // Old behaviour ~4*500 = 2000ms; fixed must stay well under that.
+    assert.ok(
+      elapsed < timeoutMs * 1.7,
+      `elapsed ${elapsed}ms exceeded the ${timeoutMs * 1.7}ms budget — deadline not shared`,
+    );
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});

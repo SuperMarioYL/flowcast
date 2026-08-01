@@ -73,3 +73,47 @@ test("assembleAsset produces a schema-valid asset", () => {
   assert.equal(parsed.name, "login");
   assert.equal(parsed.steps.length, 3);
 });
+
+test("buildSteps collapses consecutive fills on a css-less element (role+name)", () => {
+  // Element captured WITHOUT a css/xpath selector — only role+name/text/nth.
+  // Old sameSelector returned false when both css were undefined, so every
+  // keystroke became its own fill step instead of collapsing to the last value.
+  const target = {
+    role: "textbox",
+    name: "Username",
+    text: "Username",
+    tagName: "input",
+    nthOfType: 0,
+  };
+  const timeline: TimelineEvent[] = [
+    { kind: "interaction", action: "fill", target: { ...target }, value: "a" },
+    { kind: "interaction", action: "fill", target: { ...target }, value: "al" },
+    { kind: "interaction", action: "fill", target: { ...target }, value: "alice" },
+  ];
+  const steps = buildSteps(timeline);
+  assert.equal(steps.length, 1, "expected a single collapsed fill step");
+  assert.equal(steps[0]?.action, "fill");
+  assert.equal(steps[0]?.value, "alice");
+});
+
+test("buildSteps keeps css-less fills on different targets separate", () => {
+  // Two different css-less textboxes (distinct role+name) must NOT collapse.
+  const timeline: TimelineEvent[] = [
+    {
+      kind: "interaction",
+      action: "fill",
+      target: { role: "textbox", name: "Username", tagName: "input", nthOfType: 0 },
+      value: "alice",
+    },
+    {
+      kind: "interaction",
+      action: "fill",
+      target: { role: "textbox", name: "Password", tagName: "input", nthOfType: 1 },
+      value: "pw",
+    },
+  ];
+  const steps = buildSteps(timeline);
+  assert.equal(steps.length, 2);
+  assert.equal(steps[0]?.value, "alice");
+  assert.equal(steps[1]?.value, "pw");
+});

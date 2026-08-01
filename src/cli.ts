@@ -142,6 +142,38 @@ program
     console.log("Editor closed.");
   });
 
+program
+  .command("validate")
+  .description("Validate a .flow.json asset without launching a browser or LLM")
+  .argument("<asset>", "path to the .flow.json asset")
+  .action(async (assetPath: string) => {
+    const ok = await validateAssetCommand(assetPath);
+    if (!ok) process.exitCode = 1;
+  });
+
+/**
+ * Validate a .flow.json asset on disk WITHOUT launching a browser or calling an
+ * LLM — reuses the same Zod schema replay reads (parseFlowAsset via
+ * readFlowAsset). Returns true (and logs a one-line summary) on a valid asset,
+ * false (and prints a readable, path-tagged error to stderr) on an invalid one,
+ * so it is safe to wire into CI (non-zero exit on failure).
+ */
+export async function validateAssetCommand(
+  assetPath: string,
+  log: (line: string) => void = (l) => console.log(l),
+): Promise<boolean> {
+  try {
+    const asset = await readFlowAsset(assetPath);
+    log(
+      `Valid: ${assetPath} — ${asset.steps.length} step(s), ${asset.params.length} param(s).`,
+    );
+    return true;
+  } catch (err) {
+    console.error(`Invalid: ${(err as Error).message}`);
+    return false;
+  }
+}
+
 export { program };
 
 const isDirectRun =
