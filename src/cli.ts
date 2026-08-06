@@ -11,7 +11,7 @@
  */
 import { Command } from "commander";
 
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -82,6 +82,11 @@ program
     "--heal",
     "on selector drift, re-locate against the live DOM with your own LLM API key",
     false,
+  )
+  .option(
+    "--write",
+    "with --heal, write the repaired selectors back to the asset (default; --no-write disables)",
+    true,
   )
   .option(
     "--no-write",
@@ -176,11 +181,31 @@ export async function validateAssetCommand(
 
 export { program };
 
-const isDirectRun =
-  process.argv[1] !== undefined &&
-  import.meta.url === `file://${process.argv[1]}`;
+/**
+ * Detect whether this module was invoked as the process entry point
+ * (i.e. `node .../cli.js <cmd>` rather than imported). Comparing the RESOLVED
+ * filesystem paths (via realpathSync) — not raw URL strings — makes this
+ * robust on Windows backslash paths, paths with spaces / URL-special chars
+ * (import.meta.url percent-encodes those, the string concat does not), and
+ * symlinked dirs (e.g. macOS /tmp → /private/tmp, where import.meta.url
+ * resolves the symlink but process.argv[1] does not). With the old string
+ * comparison this check silently failed in those environments and
+ * program.parseAsync was never called, so `flowcast <cmd>` exited doing
+ * nothing.
+ */
+export function isDirectRun(
+  metaUrl: string,
+  argv1: string | undefined,
+): boolean {
+  if (argv1 === undefined) return false;
+  try {
+    return realpathSync(fileURLToPath(metaUrl)) === realpathSync(argv1);
+  } catch {
+    return false;
+  }
+}
 
-if (isDirectRun) {
+if (isDirectRun(import.meta.url, process.argv[1])) {
   program.parseAsync(process.argv).catch((err: unknown) => {
     console.error((err as Error).message ?? err);
     process.exitCode = 1;

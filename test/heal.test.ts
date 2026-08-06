@@ -6,6 +6,7 @@ import type { AddressInfo } from "node:net";
 import {
   buildHealPrompt,
   createHealHook,
+  defaultChat,
   parseHealChoice,
   snapshotCandidates,
 } from "../src/heal.js";
@@ -153,5 +154,44 @@ test("replay --heal self-repairs a drifted selector and records healHistory", as
     assert.ok(healedBundle.css || healedBundle.role);
   } finally {
     server.close();
+  }
+});
+
+// --- fix-heal-chat-fetch-has-no-timeout --------------------------------------
+//
+// defaultChat's fetch to the LLM endpoint had no AbortController / timeout.
+// Node's global fetch has no default timeout, so a stalled FLOWCAST_LLM_BASE_URL
+// or provider outage would hang the entire --heal replay forever with no error.
+// The fix wraps the fetch in an AbortController and throws a readable timeout
+// error so the heal hook fails loudly instead of freezing.
+
+test("defaultChat aborts and throws a readable timeout error when the endpoint stalls", { timeout: 5000 }, async () => {
+  // Local server that accepts the connection but NEVER responds — simulates a
+  // stalled endpoint. Loopback-only, no real network.
+  const server = createServer((_req, _res) => {
+    // intentionally never call res.end()
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const port = (server.address() as AddressInfo).port;
+  const baseUrl = `http://127.0.0.1:${port}/v1`;
+
+  const savedBase = process.env.FLOWCAST_LLM_BASE_URL;
+  const savedKey = process.env.FLOWCAST_LLM_API_KEY;
+  process.env.FLOWCAST_LLM_BASE_URL = baseUrl;
+  process.env.FLOWCAST_LLM_API_KEY = "test-key";
+  try {
+    const chat = defaultChat(150); // 150ms timeout — hermetic, fast
+    const start = Date.now();
+    await assert.rejects(() => chat("heal prompt"), /timed out/i);
+    const elapsed = Date.now() - start;
+    // Must fail fast (the AbortController fired), NOT hang for 120s.
+    assert.ok(elapsed < 5000, `expected a fast timeout, got ${elapsed}ms`);
+  } finally {
+    if (savedBase === undefined) delete process.env.FLOWCAST_LLM_BASE_URL;
+    else process.env.FLOWCAST_LLM_BASE_URL = savedBase;
+    if (savedKey === undefined) delete process.env.FLOWCAST_LLM_API_KEY;
+    else process.env.FLOWCAST_LLM_API_KEY = savedKey;
+    server.closeAllConnections();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 });

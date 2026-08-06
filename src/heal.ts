@@ -227,6 +227,9 @@ export function parseHealChoice(reply: string, max: number): HealChoice | null {
   }
 }
 
+/** Default timeout (ms) for a single self-heal LLM chat-completions request. */
+export const DEFAULT_LLM_TIMEOUT_MS = 120_000;
+
 /**
  * Default chat backend: any OpenAI-compatible Chat Completions endpoint, keyed
  * by the user's OWN env vars. Nothing is bundled or fine-tuned.
@@ -234,8 +237,15 @@ export function parseHealChoice(reply: string, max: number): HealChoice | null {
  *   FLOWCAST_LLM_API_KEY   (or OPENAI_API_KEY)   — required
  *   FLOWCAST_LLM_BASE_URL  (default https://api.openai.com/v1)
  *   FLOWCAST_LLM_MODEL     (default gpt-4o-mini)
+ *
+ * The fetch is wrapped in an `AbortController` so a misconfigured base URL, a
+ * provider outage, or a hung TCP connection surfaces a readable timeout error
+ * instead of hanging the entire `--heal` replay forever — Node's global
+ * fetch has no default timeout.
  */
-export function defaultChat(): ChatFn {
+export function defaultChat(
+  timeoutMs: number = DEFAULT_LLM_TIMEOUT_MS,
+): ChatFn {
   const apiKey =
     process.env.FLOWCAST_LLM_API_KEY ?? process.env.OPENAI_API_KEY ?? "";
   const baseUrl = (
@@ -251,33 +261,50 @@ export function defaultChat(): ChatFn {
           "FLOWCAST_LLM_MODEL for a different provider. FlowCast bundles no model.",
       );
     }
-    const res = await fetch(`${baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        temperature: 0,
-        messages: [
-          {
-            role: "system",
-            content:
-              "You re-locate a browser element after a DOM change. Reply with JSON only.",
-          },
-          { role: "user", content: prompt },
-        ],
-      }),
-    });
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      throw new Error(`LLM request failed (${res.status}): ${detail.slice(0, 300)}`);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(`${baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          temperature: 0,
+          messages: [
+            {
+              role: "system",
+              content:
+                "You re-locate a browser element after a DOM change. Reply with JSON only.",
+            },
+            { role: "user", content: prompt },
+          ],
+        }),
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        const detail = await res.text().catch(() => "");
+        throw new Error(`LLM request failed (${res.status}): ${detail.slice(0, 300)}`);
+      }
+      const data = (await res.json()) as {
+        choices?: Array<{ message?: { content?: string } }>;
+      };
+      return data.choices?.[0]?.message?.content ?? "";
+    } catch (err) {
+      if (controller.signal.aborted) {
+        throw new Error(
+          `LLM request timed out after ${Math.max(
+            1,
+            Math.round(timeoutMs / 1000),
+          )}s — check FLOWCAST_LLM_BASE_URL / provider availability.`,
+        );
+      }
+      throw err;
+    } finally {
+      clearTimeout(timer);
     }
-    const data = (await res.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-    return data.choices?.[0]?.message?.content ?? "";
   };
 }
 
