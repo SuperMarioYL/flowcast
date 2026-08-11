@@ -6,7 +6,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { program, isDirectRun } from "../src/cli.js";
+import { program, isDirectRun, runReplayCommand } from "../src/cli.js";
+import { writeFlowAsset, type FlowAsset } from "../src/asset.js";
 
 // --- fix-no-write-default-disables-heal-persistence --------------------------
 //
@@ -99,4 +100,114 @@ test("isDirectRun resolves real paths so space/symlink paths don't silently disa
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+// --- fix-partial-heal-lost-on-later-step-failure ----------------------------
+//
+// replayAsset re-throws any step error after its `finally` closes the browser,
+// so the success-gated writeback would never run when a LATER step fails —
+// silently discarding heals EARLIER steps performed during this run (and
+// re-billing the LLM on the next run). The fix (in runReplayCommand, which the
+// `replay` action delegates to) snapshots healHistory lengths before replay
+// and, on a thrown error, persists any heal that happened during this run
+// (when --write) before re-throwing. Injected deps let us drive this without a
+// browser: a stub `replay` that mutates the asset then throws.
+
+test("runReplayCommand persists earlier-step heals when a later step fails (--write)", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fc-partial-"));
+  const path = join(dir, "a.flow.json");
+  const asset: FlowAsset = {
+    version: "1",
+    name: "t",
+    params: [],
+    steps: [{ id: "s1", action: "click", target: { css: "#old" } }],
+  };
+  await writeFlowAsset(path, asset);
+
+  let writes = 0;
+  let written: FlowAsset | undefined;
+  await assert.rejects(
+    () =>
+      runReplayCommand(
+        path,
+        { param: [], headed: false, heal: true, write: true },
+        {
+          // Step 0 heals (mutates healHistory), then a LATER step fails.
+          replay: async (a) => {
+            a.steps[0]!.healHistory = [
+              {
+                at: "2026-08-11T00:00:00Z",
+                from: { css: "#old" },
+                to: { css: "#new" },
+              },
+            ];
+            throw new Error("later step failed");
+          },
+          write: async (_p, a) => {
+            writes++;
+            written = a;
+          },
+          makeHeal: () => ({ heal: async () => null }),
+        },
+      ),
+    /later step failed/,
+  );
+  assert.equal(writes, 1, "partial heal must be written back before re-throwing");
+  assert.equal(
+    written?.steps[0]?.healHistory?.length,
+    1,
+    "written asset carries the healed step",
+  );
+
+  // --no-write: even though a heal happened and a later step failed, do NOT
+  // write back (the user opted out of persistence).
+  let writesNoWrite = 0;
+  await assert.rejects(
+    () =>
+      runReplayCommand(
+        path,
+        { param: [], headed: false, heal: true, write: false },
+        {
+          replay: async (a) => {
+            a.steps[0]!.healHistory = [
+              {
+                at: "2026-08-11T00:00:00Z",
+                from: { css: "#old" },
+                to: { css: "#new" },
+              },
+            ];
+            throw new Error("later step failed again");
+          },
+          write: async () => {
+            writesNoWrite++;
+          },
+          makeHeal: () => ({ heal: async () => null }),
+        },
+      ),
+    /later step failed again/,
+  );
+  assert.equal(writesNoWrite, 0, "--no-write must suppress the partial-heal writeback");
+
+  // No heal this run → no writeback even on failure with --write.
+  let writesNoHeal = 0;
+  await assert.rejects(
+    () =>
+      runReplayCommand(
+        path,
+        { param: [], headed: false, heal: true, write: true },
+        {
+          replay: async () => {
+            throw new Error("step failed before any heal");
+          },
+          write: async () => {
+            writesNoHeal++;
+          },
+          makeHeal: () => ({ heal: async () => null }),
+        },
+      ),
+    /step failed before any heal/,
+  );
+  assert.equal(writesNoHeal, 0, "no writeback when no step healed during this run");
+
+  await rm(dir, { recursive: true, force: true });
 });

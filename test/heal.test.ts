@@ -195,3 +195,40 @@ test("defaultChat aborts and throws a readable timeout error when the endpoint s
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 });
+
+// --- fix-heal-parse-greedy-regex ---------------------------------------------
+//
+// parseHealChoice extracted the model's answer with a GREEDY /\{[\s\S]*\}/,
+// which spans from the first `{` to the LAST `}`. When a chatty model (the
+// default backend is gpt-4o-mini) wraps the JSON in prose that itself contains
+// braces — e.g. `(confidence {high})` — the match captured prose + the real
+// object and JSON.parse threw, so parseHealChoice returned null and heal gave
+// up even though the reply contained a valid choice. The fix scans for
+// balanced `{...}` objects (string-aware) and returns the first that parses to
+// a valid HealChoice.
+
+test("parseHealChoice survives braces in surrounding prose (balanced scan)", () => {
+  // Braces AFTER the object (the greedy regex's headline failure).
+  assert.deepEqual(
+    parseHealChoice('{"index": 1, "reason": "ok"} (note: confidence {high})', 5),
+    { index: 1, reason: "ok" },
+  );
+  // Braces BEFORE the object, as invalid prose (`{x}` is not valid JSON).
+  assert.deepEqual(
+    parseHealChoice(
+      'Thinking... the old {x} was wrong. Final: {"index": 3, "reason": "new button"}',
+      5,
+    ),
+    { index: 3, reason: "new button" },
+  );
+  // A brace INSIDE a string value must not unbalance the scan.
+  assert.deepEqual(
+    parseHealChoice('{"index": 0, "reason": "matched {button}"}', 2),
+    { index: 0, reason: "matched {button}" },
+  );
+  // The existing ```json-fence fast path still works.
+  assert.deepEqual(
+    parseHealChoice('Sure!\n```json\n{"index": 0}\n```\nDone.', 3),
+    { index: 0, reason: undefined },
+  );
+});

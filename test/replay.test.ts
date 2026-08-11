@@ -209,3 +209,64 @@ test("resolveLocator honors the per-step timeout across multiple clues (no N*500
     server.close();
   }
 });
+
+// --- fix-resolvelocator-returns-first-on-ambiguous-match ---------------------
+//
+// resolveLocator returned the first DOM element as soon as `count >= 1` for a
+// candidate clue, but the documented invariant is "exactly one element wins".
+// With an ambiguous clue (a getByRole/getByText match hitting several
+// elements), `count > 1` silently picked the first element — possibly the
+// wrong one. The fix returns ONLY on `count === 1`, falls through to the next
+// clue on ambiguity, and throws SelectorMissError (→ --heal) if no clue is
+// unique. A Page stub drives the count() of each clue directly (no browser).
+
+/**
+ * A Page stub whose locator/getByRole/getByText produce locators with a
+ * configurable `count()` (and a `first()` whose `waitFor` throws when count is
+ * 0). Each locator + its first() carries a `__tag` so the test can assert
+ * WHICH clue won.
+ */
+function stubResolvePage(
+  counts: { css?: number; text?: number; role?: number },
+): Page {
+  const mk = (count: number, tag: string) => ({
+    __tag: tag,
+    first: () => ({
+      __tag: tag,
+      waitFor: async (_opts?: { state?: string; timeout?: number }) => {
+        if (count === 0) throw new Error("timeout"); // not attached → next clue
+      },
+    }),
+    count: async () => count,
+  });
+  return {
+    locator: (sel: string) => mk(counts.css ?? 0, `css:${sel}`),
+    getByRole: (role: string, opts: { name?: string }) =>
+      mk(counts.role ?? 0, `role:${role}:${opts.name}`),
+    getByText: (text: string) => mk(counts.text ?? 0, `text:${text}`),
+  } as unknown as Page;
+}
+
+test("resolveLocator skips an ambiguous clue and returns the uniquely-resolving one", async () => {
+  // css matches TWO elements (ambiguous); text matches exactly one.
+  const page = stubResolvePage({ css: 2, text: 1 });
+  const bundle: SelectorBundle = { css: "#x", text: "Login" };
+  const step: Step = { id: "s1", action: "click", target: bundle };
+  const loc = await resolveLocator(page, step, bundle, 2000);
+  assert.equal(
+    (loc as unknown as { __tag: string }).__tag,
+    "text:Login",
+    "must NOT return the ambiguous css clue's first element",
+  );
+});
+
+test("resolveLocator throws SelectorMissError when every clue is ambiguous (count>1)", async () => {
+  // role+name matches TWO elements — no other clue to fall back to.
+  const page = stubResolvePage({ role: 2 });
+  const bundle: SelectorBundle = { role: "button", name: "Sign in" };
+  const step: Step = { id: "s1", action: "click", target: bundle };
+  await assert.rejects(
+    () => resolveLocator(page, step, bundle, 2000),
+    SelectorMissError,
+  );
+});

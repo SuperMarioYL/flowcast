@@ -208,23 +208,67 @@ export function buildHealPrompt(
   ].join("\n");
 }
 
-/** Parse the model's reply into a HealChoice, tolerating ```json fences. */
+/**
+ * Yield every balanced `{...}` substring in `body`, scanning left to right and
+ * respecting JSON string boundaries (so a `{`/`}` inside a string value does
+ * not unbalance the depth). Each yielded slice begins at a `{` whose depth
+ * returns to exactly 0. Used by `parseHealChoice` to tolerate chatty models
+ * that wrap the answer JSON in prose which itself contains braces (e.g.
+ * `(confidence {high})`); the old greedy `/\{[\s\S]*\}/` spanned from the first
+ * `{` to the LAST `}`, capturing prose + the real object and breaking
+ * JSON.parse so heal silently failed.
+ */
+function* balancedObjects(body: string): Generator<string> {
+  const n = body.length;
+  for (let start = 0; start < n; start++) {
+    if (body[start] !== "{") continue;
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    for (let i = start; i < n; i++) {
+      const ch = body[i];
+      if (inString) {
+        if (escaped) escaped = false;
+        else if (ch === "\\") escaped = true;
+        else if (ch === '"') inString = false;
+      } else if (ch === '"') {
+        inString = true;
+      } else if (ch === "{") {
+        depth++;
+      } else if (ch === "}") {
+        depth--;
+        if (depth === 0) {
+          yield body.slice(start, i + 1);
+          break;
+        }
+        if (depth < 0) break; // unbalanced from this start; advance to next `{`
+      }
+    }
+  }
+}
+
+/** Parse the model's reply into a HealChoice, tolerating ```json fences and braced prose. */
 export function parseHealChoice(reply: string, max: number): HealChoice | null {
   const fenced = reply.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const body = (fenced && fenced[1] !== undefined ? fenced[1] : reply).trim();
-  const match = body.match(/\{[\s\S]*\}/);
-  if (!match) return null;
-  try {
-    const obj = JSON.parse(match[0]) as { index?: unknown; reason?: unknown };
-    const index = typeof obj.index === "number" ? obj.index : Number(obj.index);
-    if (!Number.isInteger(index) || index < 0 || index >= max) return null;
-    return {
-      index,
-      reason: typeof obj.reason === "string" ? obj.reason : undefined,
-    };
-  } catch {
-    return null;
+  // Scan for balanced `{...}` objects in order (NOT a greedy `[\s\S]*`, which
+  // spans first-`{` to last-`}` and breaks JSON.parse when the model wraps the
+  // answer in braced prose). Return the first that parses to a valid HealChoice
+  // with an in-range index.
+  for (const candidate of balancedObjects(body)) {
+    try {
+      const obj = JSON.parse(candidate) as { index?: unknown; reason?: unknown };
+      const index = typeof obj.index === "number" ? obj.index : Number(obj.index);
+      if (!Number.isInteger(index) || index < 0 || index >= max) continue;
+      return {
+        index,
+        reason: typeof obj.reason === "string" ? obj.reason : undefined,
+      };
+    } catch {
+      // not valid JSON / not a HealChoice — try the next balanced object
+    }
   }
+  return null;
 }
 
 /** Default timeout (ms) for a single self-heal LLM chat-completions request. */
@@ -308,11 +352,14 @@ export function defaultChat(
   };
 }
 
-/** True if a bundle actually resolves to a unique-ish element on the page. */
+/** True if a bundle resolves to EXACTLY one element on the page (the
+ *  "exactly one wins" invariant `resolveLocator` enforces — tightened from
+ *  `>= 1` so a heal candidate that matches several elements is rejected and
+ *  `--heal` can re-disambiguate instead of silently acting on the wrong one). */
 async function bundleResolves(page: Page, bundle: SelectorBundle): Promise<boolean> {
   for (const loc of candidateLocators(page, bundle)) {
     try {
-      if ((await loc.count()) >= 1) return true;
+      if ((await loc.count()) === 1) return true;
     } catch {
       /* keep trying other clues */
     }

@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-11
+
+### Fixed
+- **partial-heal persistence on later-step failure**: the `replay` action only
+  wrote healed selectors back on full-replay success, so in a multi-step flow
+  where an earlier step healed but a LATER step then failed, every heal
+  performed before the failing step was silently discarded (and the LLM was
+  re-billed on the next run). The action now snapshots `healHistory` lengths
+  before replay and persists any heal that happened during this run (when
+  `--write`) before re-throwing, so completed heals survive a later-step
+  failure.
+- **heal parse greedy regex**: `parseHealChoice` used a greedy `/\{[\s\S]*\}/`
+  that spanned from the first `{` to the last `}`, so a chatty model (the
+  default `gpt-4o-mini`) wrapping the answer JSON in prose containing braces
+  (e.g. `(confidence {high})`) broke `JSON.parse` and heal silently failed. It
+  now scans for balanced, string-aware `{...}` objects and returns the first
+  that parses to a valid `HealChoice`.
+- **goto url `{{param}}` not injected**: the goto branch used `step.url`
+  verbatim (no `injectValue`, unlike fill/select), and Zod's `.url()` accepts
+  `https://{{host}}/login`, so a `{{param}}` in a url navigated to a
+  literal-brace URL and failed confusingly. The `StepSchema` superRefine now
+  rejects `{{` in a goto url loudly so `validate`/`replay` fail fast.
+- **edit hangs when tab closed without Save & close**: closing the browser tab
+  without clicking "Save & close" fired no server-observable event, so
+  `flowcast edit` hung on a leaked port forever with no SIGINT handler. The
+  editor now registers SIGINT/SIGTERM handlers that call `stop()` (and remove
+  themselves) so Ctrl-C frees the port and resolves `done`.
+- **resolveLocator returns first on ambiguous match**: `resolveLocator`
+  returned the first DOM element as soon as `count >= 1`, but the invariant is
+  "exactly one element wins"; an ambiguous clue (e.g. `getByRole` matching
+  several elements) silently picked the first element — possibly the wrong one.
+  It now returns ONLY on `count === 1`, falls through to the next clue on
+  ambiguity, and throws `SelectorMissError` (→ `--heal`) when no clue is
+  unique; `bundleResolves` is tightened symmetrically.
+
+## [0.3.0] - 2026-08-06
+
+### Fixed
+- **--no-write heal persistence**: the `replay` command now declares a positive
+  `--write` flag (default true) alongside `--no-write`, so heal writeback
+  persists by default and `--write` is a recognized option (previously only
+  `--no-write` was declared, so `--write` was an unknown option commander
+  rejected).
+- **isDirectRun detection**: replaced the
+  `import.meta.url === \`file://\${argv[1]}\`` string check with a `realpath`
+  comparison so direct-run detection is robust on Windows backslash paths, paths
+  with spaces / URL-special chars, and symlinked dirs (was silently disabling
+  the CLI in those environments). Extracted as an exported `isDirectRun()`
+  helper.
+- **heal fetch timeout**: wrapped `defaultChat`'s LLM fetch in an
+  `AbortController` with a 120s default timeout; on abort throws a readable
+  "LLM request timed out after Ns" error so a stalled endpoint fails loudly
+  instead of hanging `--heal` replay forever.
+
 ## [0.2.0] - 2026-08-01
 
 ### Added
@@ -38,6 +92,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`examples/login-and-export.flow.json`), a scripted demo, and a bilingual README
   (zh primary + English sibling).
 
-[Unreleased]: https://github.com/SuperMarioYL/flowcast/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/SuperMarioYL/flowcast/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/SuperMarioYL/flowcast/releases/tag/v0.4.0
+[0.3.0]: https://github.com/SuperMarioYL/flowcast/releases/tag/v0.3.0
 [0.2.0]: https://github.com/SuperMarioYL/flowcast/releases/tag/v0.2.0
 [0.1.0]: https://github.com/SuperMarioYL/flowcast/releases/tag/v0.1.0

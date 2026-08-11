@@ -118,6 +118,18 @@ export const StepSchema = z
           message: "goto step requires a `url`",
           path: ["url"],
         });
+      } else if (step.url.includes("{{")) {
+        // The goto branch in replay uses `step.url` VERBATIM (it never passes
+        // through `injectValue`, unlike fill/select), and Zod's `.url()`
+        // accepts strings like `https://{{host}}/login` — so a `{{param}}` in a
+        // url would navigate to a literal-brace URL and fail confusingly.
+        // Reject it loudly here so validate/replay fail fast instead.
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "goto url cannot contain {{param}} refs; parameterize step value only",
+          path: ["url"],
+        });
       }
     } else if (!step.target) {
       ctx.addIssue({

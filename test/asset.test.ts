@@ -136,3 +136,31 @@ test("emptyAsset produces a fillable shell", () => {
   assert.deepEqual(shell.steps, []);
   assert.ok(shell.recordedAt);
 });
+
+// --- fix-goto-url-param-not-injected -----------------------------------------
+//
+// The goto branch in replay uses `step.url` VERBATIM (no `injectValue`, unlike
+// fill/select), and Zod's `.url()` accepts `https://{{host}}/login` — so a
+// `{{param}}` in a url would navigate to a literal-brace URL and fail
+// confusingly. The superRefine on StepSchema now rejects `{{` in a goto url
+// loudly so validate/replay fail fast instead of navigating to a broken URL.
+
+test("parseFlowAsset rejects a {{param}} ref in a goto url (but accepts a plain url)", () => {
+  assert.throws(
+    () =>
+      parseFlowAsset({
+        version: "1",
+        name: "x",
+        steps: [{ id: "s1", action: "goto", url: "https://{{host}}/login" }],
+      }),
+    /cannot contain \{\{param\}\} refs/,
+  );
+  // A plain url (no {{) is still accepted — the guard is specific to refs.
+  assert.doesNotThrow(() =>
+    parseFlowAsset({
+      version: "1",
+      name: "x",
+      steps: [{ id: "s1", action: "goto", url: "https://example.com/login" }],
+    }),
+  );
+});

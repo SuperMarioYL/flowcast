@@ -16,11 +16,11 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 import { record } from "./record.js";
-import { replayAsset } from "./replay.js";
+import { replayAsset, type HealHook } from "./replay.js";
 import { parseParamPairs } from "./params.js";
 import { createHealHook } from "./heal.js";
 import { startEditor } from "./ui/editor.js";
-import { readFlowAsset, writeFlowAsset } from "./asset.js";
+import { readFlowAsset, writeFlowAsset, type FlowAsset } from "./asset.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -103,32 +103,7 @@ program
         write: boolean;
       },
     ) => {
-      const params = parseParamPairs(options.param);
-      // Load once so healed selectors can be persisted back to the same file.
-      const asset = await readFlowAsset(assetPath);
-      const result = await replayAsset(asset, {
-        params,
-        headless: !options.headed,
-        timeoutMs: options.timeout,
-        heal: options.heal ? createHealHook({ log: (l) => console.log(l) }) : undefined,
-      });
-
-      console.log(
-        `Replay ${result.ok ? "succeeded" : "failed"}: ${result.stepsRun} step(s) run.`,
-      );
-      if (result.healed && options.write) {
-        await writeFlowAsset(assetPath, asset);
-        console.log(`Healed selector(s) written back to ${assetPath}.`);
-      } else if (result.healed) {
-        console.log("Healed in memory only (--no-write); asset on disk unchanged.");
-      }
-      const extractedKeys = Object.keys(result.extracted);
-      if (extractedKeys.length > 0) {
-        console.log("Extracted:");
-        for (const k of extractedKeys) {
-          console.log(`  ${k} = ${JSON.stringify(result.extracted[k])}`);
-        }
-      }
+      await runReplayCommand(assetPath, options);
     },
   );
 
@@ -176,6 +151,83 @@ export async function validateAssetCommand(
   } catch (err) {
     console.error(`Invalid: ${(err as Error).message}`);
     return false;
+  }
+}
+
+/**
+ * Core of the `replay` action, extracted so the partial-heal writeback is
+ * unit-testable without a browser. Loads the asset, snapshots each step's
+ * healHistory length, runs `replayAsset`, and — on success OR on a later-step
+ * failure after earlier steps healed — writes the (mutated) asset back to disk
+ * when `options.write` is set, then propagates any error.
+ */
+export interface ReplayCommandDeps {
+  read?: (path: string) => Promise<FlowAsset>;
+  replay?: typeof replayAsset;
+  write?: (path: string, asset: FlowAsset) => Promise<void>;
+  makeHeal?: (opts: { log: (l: string) => void }) => HealHook;
+}
+
+export async function runReplayCommand(
+  assetPath: string,
+  options: {
+    param: string[];
+    headed: boolean;
+    timeout?: number;
+    heal: boolean;
+    write: boolean;
+  },
+  deps: ReplayCommandDeps = {},
+): Promise<void> {
+  const read = deps.read ?? readFlowAsset;
+  const replay = deps.replay ?? replayAsset;
+  const write = deps.write ?? writeFlowAsset;
+  const makeHeal = deps.makeHeal ?? createHealHook;
+  const params = parseParamPairs(options.param);
+  // Load once so healed selectors can be persisted back to the same file.
+  const asset = await read(assetPath);
+  // Snapshot each step's healHistory length BEFORE replay. replayAsset
+  // re-throws any step error after closing the browser in its `finally`, so the
+  // success-gated writeback below would never run when a LATER step fails —
+  // silently discarding heals EARLIER steps performed during this run (and
+  // re-billing the LLM on the next run). The catch persists any heals that
+  // happened before the failing step, then re-throws.
+  const healsBefore = asset.steps.map((s) => s.healHistory?.length ?? 0);
+  try {
+    const result = await replay(asset, {
+      params,
+      headless: !options.headed,
+      timeoutMs: options.timeout,
+      heal: options.heal ? makeHeal({ log: (l) => console.log(l) }) : undefined,
+    });
+
+    console.log(
+      `Replay ${result.ok ? "succeeded" : "failed"}: ${result.stepsRun} step(s) run.`,
+    );
+    if (result.healed && options.write) {
+      await write(assetPath, asset);
+      console.log(`Healed selector(s) written back to ${assetPath}.`);
+    } else if (result.healed) {
+      console.log("Healed in memory only (--no-write); asset on disk unchanged.");
+    }
+    const extractedKeys = Object.keys(result.extracted);
+    if (extractedKeys.length > 0) {
+      console.log("Extracted:");
+      for (const k of extractedKeys) {
+        console.log(`  ${k} = ${JSON.stringify(result.extracted[k])}`);
+      }
+    }
+  } catch (err) {
+    const healedDuringRun = asset.steps.some(
+      (s, i) => (s.healHistory?.length ?? 0) > (healsBefore[i] ?? 0),
+    );
+    if (healedDuringRun && options.write) {
+      await write(assetPath, asset);
+      console.log(
+        `Healed selector(s) written back to ${assetPath} (later step failed — heals preserved).`,
+      );
+    }
+    throw err;
   }
 }
 

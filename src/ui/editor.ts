@@ -126,12 +126,29 @@ export async function startEditor(
   const editorUrl = `http://${host}:${port}/`;
 
   let stopped = false;
+  // Track the signal handlers so `stop()` can remove them — without this,
+  // repeated editor sessions (and the normal "Save & close" path) would
+  // accumulate stale SIGINT/SIGTERM handlers across the process lifetime.
+  const signalHandlers: Array<[NodeJS.Signals, () => void]> = [];
   const stop = () => {
     if (stopped) return;
     stopped = true;
+    for (const [sig, fn] of signalHandlers) process.removeListener(sig, fn);
     server.close(() => {});
     resolveDone();
   };
+
+  // Closing the browser tab WITHOUT clicking "Save & close" fires no event the
+  // server can observe, so `done` (resolved only by `stop()`, reachable solely
+  // via `POST /api/close`) would never resolve — `flowcast edit` would hang on
+  // a leaked port forever with no graceful exit. Register SIGINT/SIGTERM
+  // handlers that call `stop()` so Ctrl-C frees the port and resolves `done`;
+  // `stop()` removes them so the process can exit normally afterward.
+  for (const sig of ["SIGINT", "SIGTERM"] as const) {
+    const fn = () => stop();
+    signalHandlers.push([sig, fn]);
+    process.on(sig, fn);
+  }
 
   if (opts.open ?? true) openBrowser(editorUrl);
   log(`Editor running at ${editorUrl} — parameterize your steps, then Save & close.`);

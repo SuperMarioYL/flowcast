@@ -126,7 +126,13 @@ export async function resolveLocator(
       const first = loc.first();
       await first.waitFor({ state: "attached", timeout: per });
       const count = await loc.count();
-      if (count >= 1) return first;
+      // "the first that resolves to exactly one element wins": return ONLY on a
+      // unique match. The lenient `>= 1` returned the first DOM element on an
+      // ambiguous clue (a getByRole/getByText match hitting several elements),
+      // silently clicking/filling the wrong one. With `count > 1` we fall
+      // through to the next candidate clue, and only throw SelectorMissError
+      // (→ `--heal`) if NO clue resolves uniquely.
+      if (count === 1) return first;
     } catch {
       // try the next clue within the remaining budget
     }

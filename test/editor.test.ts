@@ -96,3 +96,46 @@ test("POST /api/asset rejects a malformed asset with 400", async () => {
     handle.stop();
   }
 });
+
+// --- fix-edit-command-hangs-when-tab-closed-without-save-close ---------------
+//
+// `done` was resolved ONLY by `stop()`, reachable solely via `POST /api/close`
+// (or an external handle.stop()). Closing the browser tab without clicking
+// "Save & close" fires no server-observable event, so `flowcast edit` hung on a
+// leaked port forever with no SIGINT handler. The fix registers SIGINT/SIGTERM
+// handlers in startEditor that call stop() (and remove themselves on stop), so
+// Ctrl-C frees the port and resolves done. We exercise it by invoking the
+// registered handler directly (no real signal needed).
+
+test("editor SIGINT handler resolves done and removes itself on stop", async () => {
+  const path = await tmpAsset();
+  const before = new Set(process.listeners("SIGINT"));
+  const handle = await startEditor(path, { open: false, log: () => {} });
+  try {
+    const added = process.listeners("SIGINT").filter((h) => !before.has(h));
+    assert.ok(added.length >= 1, "startEditor must register a SIGINT handler");
+
+    // Invoke the handler the way a real Ctrl-C would.
+    const handler = added[0] as (() => void) | undefined;
+    assert.ok(handler, "SIGINT handler present");
+    await handler!();
+
+    // done must resolve promptly (stop() ran).
+    await Promise.race([
+      handle.done,
+      new Promise<void>((_, rej) =>
+        setTimeout(
+          () => rej(new Error("done did not resolve after SIGINT")),
+          1000,
+        ),
+      ),
+    ]);
+
+    // The handler must be removed after stop() so it doesn't leak across
+    // repeated editor sessions (and so the process can exit normally).
+    const after = process.listeners("SIGINT").filter((h) => !before.has(h));
+    assert.equal(after.length, 0, "SIGINT handler removed after stop");
+  } finally {
+    handle.stop();
+  }
+});
