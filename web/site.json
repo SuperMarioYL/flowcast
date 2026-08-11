@@ -12,8 +12,8 @@
       "en": "Turn one browser walkthrough\ninto a capability you can replay forever"
     },
     "sub": {
-      "zh": "录一次人工流程，结晶成参数化资产；站点改版时自动重定位，不再每次重新推理。",
-      "en": "Record a human flow once into a parameterized asset; it re-locates itself when the site changes — no re-inference every run."
+      "zh": "录一次人工流程，结晶成参数化资产；站点改版时用你自己的 key 自动重定位，修好就存盘——不再每次重新推理。",
+      "en": "Record a human flow once into a parameterized asset; when the site changes it re-locates with your own key and saves the fix — no re-inference every run."
     },
     "command": "npx flowcast record ./login.flow.json",
     "cta": { "zh": "开始录制", "en": "Start recording" },
@@ -30,20 +30,20 @@
       "chips": ["› 零 LLM 重放", "› 参数化 {{param}}"]
     },
     {
-      "title": { "zh": "改版不崩，自动自愈", "en": "Site changed? It heals itself" },
+      "title": { "zh": "改版自愈，修好就留住", "en": "Self-heals — and keeps the fix" },
       "body": {
-        "zh": "selector 漂移时，用你自己的 LLM key 对实时 DOM 重定位，修好资产并继续；越用越稳。",
-        "en": "When a selector drifts, it re-locates against the live DOM with your own LLM key, repairs the asset, and continues — it gets sturdier the more you use it."
+        "zh": "selector 漂移时，用你自己的 key 对实时 DOM 重定位；修好的定位当场存盘，哪怕后面的步骤失败也不丢。话多的模型、模糊的定位都不再让自愈静默翻车。",
+        "en": "When a selector drifts, it re-locates against the live DOM with your own key and saves the fix on the spot — even if a later step then fails. Chatty models and ambiguous matches no longer break heal silently."
       },
-      "chips": ["› 用你自己的 key", "› 回写自愈记录"]
+      "chips": ["› 用你自己的 key", "› 修好即存盘不丢"]
     },
     {
       "title": { "zh": "本地编辑，参数化流程", "en": "Parameterize your flow locally" },
       "body": {
-        "zh": "本地 UI 把硬编码值改成 {{param}}，删多余步，声明参数；一份资产多人多账号复用。",
-        "en": "A local UI turns hard-coded values into {{param}}, prunes steps, declares params — one asset, many accounts, many people."
+        "zh": "本地 UI 把硬编码值改成 {{param}}、删多余步、声明参数；关掉标签或 Ctrl-C 都能干净退出，参数化的 URL 在校验阶段就拦下，不再跑到一半才出错。",
+        "en": "A local UI turns hard-coded values into {{param}}, prunes steps, declares params. Closing the tab or Ctrl-C exits cleanly, and a {{param}} in a URL is caught up front — no half-run surprises."
       },
-      "chips": ["› 本地编辑器", "› 一份资产多账号"]
+      "chips": ["› 本地编辑器", "› 关标签即干净退出"]
     },
     {
       "title": { "zh": "CI 里校验，资产即制品", "en": "Lint assets in CI" },
