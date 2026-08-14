@@ -11,7 +11,7 @@
 <p align="center"><sub>FlowCast is the record-once primitive that turns one browser demo into a self-healing, replayable Agent flow — record once, replay forever, re-locate automatically when the site changes.</sub></p>
 
 <p align="center">
-  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License"></a>
   <img src="https://img.shields.io/github/v/release/SuperMarioYL/flowcast" alt="Latest release">
   <a href="https://github.com/SuperMarioYL/flowcast/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/SuperMarioYL/flowcast/ci.yml?branch=main&label=CI" alt="CI"></a>
   <img src="https://img.shields.io/badge/node-%E2%89%A522-339933?logo=node.js&logoColor=white" alt="Node >= 22">
@@ -175,7 +175,7 @@ Issues and PRs welcome. Found a bug or want a capability? [Open an issue](https:
 
 ## <img src="https://api.iconify.design/tabler:license.svg?color=%230071E3&width=24" height="22" align="absmiddle" alt=""> License
 
-[MIT](./LICENSE).
+[Apache-2.0](./LICENSE).
 
 ## Share this
 
@@ -184,4 +184,4 @@ FlowCast — record a browser demo once into a self-healing, replayable Agent fl
 Replay forever with zero LLM calls; --heal re-locates when the site changes. https://github.com/SuperMarioYL/flowcast
 ```
 
-<p align="center"><sub><a href="./LICENSE">MIT</a> © 2026 SuperMarioYL</sub></p>
+<p align="center"><sub><a href="./LICENSE">Apache-2.0</a> © 2026 SuperMarioYL</sub></p>

@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-14
+
+### Fixed
+- **submit/button-type input clicks dropped during recording**: the recorder
+  overlay's click handler blanket-returned for all `input`/`textarea`/`select`
+  tags, claiming they were "handled by change" — but the change handler only
+  covers text-like inputs (fill) and checkbox/radio (click). `<input
+  type="submit">`, `type="button"`, `type="image"`, and `type="reset">` clicks
+  were silently dropped, so a recorded flow that submits a form via a submit
+  input omitted the submit step and replay never submitted the form. The click
+  handler now uses a type-aware guard: only text-like + checkbox/radio inputs
+  and textarea/select are skipped; submit/button/image/reset fall through to
+  emit a click.
+- **extract step value not param-injected**: the `extract` action used
+  `step.value` directly as the attribute name without calling `injectValue`,
+  unlike the `fill` and `select` branches. A parameterized extract value
+  (`{{attr}}`) was required by `resolveParams` but never substituted, silently
+  using the literal `{{attr}}` string as the attribute name (→ null → empty
+  extract). The extract case now calls `injectValue(step.value, values)` before
+  using it as the attribute name, matching fill/select.
+- **README license label drift (MIT → Apache-2.0)**: the LICENSE file and
+  `package.json` are Apache-2.0, but the README.md footer and README.en.md
+  badge + footer still said MIT. All README license references are now aligned
+  to Apache-2.0 in both files.
+
 ## [0.4.0] - 2026-08-11
 
 ### Fixed
@@ -92,7 +117,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`examples/login-and-export.flow.json`), a scripted demo, and a bilingual README
   (zh primary + English sibling).
 
-[Unreleased]: https://github.com/SuperMarioYL/flowcast/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/SuperMarioYL/flowcast/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/SuperMarioYL/flowcast/releases/tag/v0.5.0
 [0.4.0]: https://github.com/SuperMarioYL/flowcast/releases/tag/v0.4.0
 [0.3.0]: https://github.com/SuperMarioYL/flowcast/releases/tag/v0.3.0
 [0.2.0]: https://github.com/SuperMarioYL/flowcast/releases/tag/v0.2.0

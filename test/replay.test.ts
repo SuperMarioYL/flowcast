@@ -9,6 +9,7 @@ import {
   resolveLocator,
   SelectorMissError,
 } from "../src/replay.js";
+import { overlayScript } from "../src/recorder-overlay.js";
 import type { Page } from "playwright";
 import type { FlowAsset, SelectorBundle, Step } from "../src/asset.js";
 
@@ -269,4 +270,66 @@ test("resolveLocator throws SelectorMissError when every clue is ambiguous (coun
     () => resolveLocator(page, step, bundle, 2000),
     SelectorMissError,
   );
+});
+
+// --- fix-record-drops-submit-input-clicks -----------------------------------
+//
+// The recorder-overlay click handler used to blanket-return for ALL
+// input/textarea/select tags (`if (/^(input|textarea|select)$/i.test(...))
+// return; // handled by change`), but the change handler only covers text-like
+// inputs (fill) + checkbox/radio (click). <input type="submit"> clicks were
+// silently dropped. The fix is type-aware: only skip inputs the change handler
+// covers; let submit/button/image/reset fall through to emit a click.
+
+test("overlay click handler no longer blanket-drops submit/button input clicks", () => {
+  const src = overlayScript("__flowcastEmit");
+  // The old blanket guard with its "handled by change" comment must be gone.
+  assert.ok(
+    !src.includes("handled by change"),
+    "blanket input/textarea/select return ('handled by change') must be removed",
+  );
+  // The type-aware guard must type-check INPUT elements instead of
+  // blanket-dropping them.
+  assert.ok(
+    src.includes('node.tagName === "INPUT"'),
+    "click handler must type-check INPUT elements instead of blanket-dropping them",
+  );
+});
+
+// --- fix-extract-value-not-param-injected -----------------------------------
+//
+// The extract action used `step.value` directly as the attribute name without
+// calling `injectValue`, unlike fill/select. A parameterized extract value
+// (`{{attr}}`) was required by resolveParams but never substituted, silently
+// extracting from a literal `{{attr}}` attribute → empty string. The fix calls
+// `injectValue(step.value ?? "", values)` in the extract case.
+
+test("replayAsset injects params into extract step value (attribute name)", async (t) => {
+  if (!(await chromiumAvailable())) {
+    t.skip("Chromium not installed (run: npx playwright install chromium)");
+    return;
+  }
+  const { server, url } = await startFixture();
+  try {
+    const asset: FlowAsset = {
+      version: "1",
+      name: "fixture-extract-param",
+      params: [{ key: "attr", required: true, default: "id" }],
+      steps: [
+        { id: "s1", action: "goto", url },
+        { id: "s2", action: "extract", target: { css: "#out" }, value: "{{attr}}" },
+      ],
+    };
+    const result = await replayAsset(asset, {
+      params: { attr: "id" },
+      headless: true,
+      log: () => {},
+    });
+    assert.equal(result.ok, true);
+    // Without the fix: getAttribute("{{attr}}") → null → "".
+    // With the fix: getAttribute("id") → "out".
+    assert.equal(result.extracted.s2, "out");
+  } finally {
+    server.close();
+  }
 });

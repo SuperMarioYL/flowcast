@@ -196,7 +196,7 @@ async function runStep(
       break;
     }
     case "extract": {
-      const attr = step.value;
+      const attr = injectValue(step.value ?? "", values);
       const out = attr
         ? ((await locator.getAttribute(attr, { timeout: t })) ?? "")
         : ((await locator.textContent({ timeout: t })) ?? "").trim();

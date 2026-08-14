@@ -201,7 +201,16 @@ export function overlayScript(bindingName: string = EMIT_BINDING): string {
       node = node.parentElement; hops++;
     }
     node = node || el;
-    if (/^(input|textarea|select)$/i.test(node.tagName)) return; // handled by change
+    // Only skip inputs the change handler emits for (text-like fill + checkbox/radio
+    // click) plus textarea/select. submit/button/image/reset inputs fire a CLICK
+    // (not change), so they MUST fall through to emit — otherwise a flow that
+    // submits a form via <input type="submit"> silently omits the submit step and
+    // replay never submits the form.
+    if (node.tagName === "SELECT" || node.tagName === "TEXTAREA") return;
+    if (node.tagName === "INPUT") {
+      var ty = (node.getAttribute("type") || "text").toLowerCase();
+      if (ty === "password" || ty === "text" || ty === "email" || ty === "search" || ty === "tel" || ty === "url" || ty === "number" || ty === "checkbox" || ty === "radio") return;
+    }
     emit({ action: "click", target: bundle(node), label: labelFor(node, "click") });
   }, true);
 

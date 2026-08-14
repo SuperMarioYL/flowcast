@@ -175,7 +175,7 @@ FlowCast 不和它们抢"通用 Agent 推理"——而是补在它们下游：�
 
 ## <img src="https://api.iconify.design/tabler:license.svg?color=%230071E3&width=24" height="22" align="absmiddle" alt=""> License
 
-[MIT](./LICENSE)。
+[Apache-2.0](./LICENSE)。
 
 ## Share this
 
@@ -184,4 +184,4 @@ FlowCast — 把一次浏览器演示录成可自愈、可重放的 Agent 流程
 站点改版 --heal 自动重定位，正常重放零 LLM 调用。 https://github.com/SuperMarioYL/flowcast
 ```
 
-<p align="center"><sub><a href="./LICENSE">MIT</a> © 2026 SuperMarioYL</sub></p>
+<p align="center"><sub><a href="./LICENSE">Apache-2.0</a> © 2026 SuperMarioYL</sub></p>
