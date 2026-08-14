@@ -12,8 +12,8 @@
       "en": "Turn one browser walkthrough\ninto a capability you can replay forever"
     },
     "sub": {
-      "zh": "录一次人工流程，结晶成参数化资产；站点改版时用你自己的 key 自动重定位，修好就存盘——不再每次重新推理。",
-      "en": "Record a human flow once into a parameterized asset; when the site changes it re-locates with your own key and saves the fix — no re-inference every run."
+      "zh": "录一次人工流程，结晶成参数化资产；从输入到提交按钮全程捕获，站点改版时用你自己的 key 自动重定位，修好就存盘——不再每次重新推理。",
+      "en": "Record a human flow once into a parameterized asset; every interaction — fills, clicks, submit buttons — is captured. When the site changes it re-locates with your own key and saves the fix — no re-inference every run."
     },
     "command": "npx flowcast record ./login.flow.json",
     "cta": { "zh": "开始录制", "en": "Start recording" },
@@ -24,10 +24,10 @@
     {
       "title": { "zh": "录一次，永久重放", "en": "Record once, replay forever" },
       "body": {
-        "zh": "人工走一遍流程，自动结晶成可复用资产；重放零推理调用，每次确定性跑通。",
-        "en": "Walk through a flow once; it becomes a reusable asset. Replay makes zero inference calls — deterministic every time."
+        "zh": "人工走一遍流程，自动结晶成可复用资产；从输入框到提交按钮全程录制，重放零推理调用，每次确定性跑通。",
+        "en": "Walk through a flow once; it becomes a reusable asset. Every interaction — fills, clicks, even submit buttons — is captured. Replay makes zero inference calls, deterministic every time."
       },
-      "chips": ["› 零 LLM 重放", "› 参数化 {{param}}"]
+      "chips": ["› 零 LLM 重放", "› 表单全程录制", "› 参数化 {{param}}"]
     },
     {
       "title": { "zh": "改版自愈，修好就留住", "en": "Self-heals — and keeps the fix" },
@@ -38,12 +38,12 @@
       "chips": ["› 用你自己的 key", "› 修好即存盘不丢"]
     },
     {
-      "title": { "zh": "本地编辑，参数化流程", "en": "Parameterize your flow locally" },
+      "title": { "zh": "本地编辑，全流程参数化", "en": "Parameterize your whole flow locally" },
       "body": {
-        "zh": "本地 UI 把硬编码值改成 {{param}}、删多余步、声明参数；关掉标签或 Ctrl-C 都能干净退出，参数化的 URL 在校验阶段就拦下，不再跑到一半才出错。",
-        "en": "A local UI turns hard-coded values into {{param}}, prunes steps, declares params. Closing the tab or Ctrl-C exits cleanly, and a {{param}} in a URL is caught up front — no half-run surprises."
+        "zh": "本地 UI 把硬编码值改成 {{param}}、删多余步、声明参数；连提取的属性名也能参数化，重放时自动注入。关掉标签或 Ctrl-C 都能干净退出。",
+        "en": "A local UI turns hard-coded values into {{param}}, prunes steps, declares params — even the attribute an extract step reads can be parameterized and injected at replay. Closing the tab or Ctrl-C exits cleanly."
       },
-      "chips": ["› 本地编辑器", "› 关标签即干净退出"]
+      "chips": ["› 本地编辑器", "› 连提取也可参数化", "› 关标签即干净退出"]
     },
     {
       "title": { "zh": "CI 里校验，资产即制品", "en": "Lint assets in CI" },
