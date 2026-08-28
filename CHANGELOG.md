@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-08-29
+
+### Fixed
+- **label-forwarded checkbox/radio/button clicks double-captured**: the
+  recorder overlay's click handler emitted a click for the `<label>` itself
+  whenever the user clicked a label (e.g. `<label for="chk">Remember me</label>`),
+  AND the change handler emitted a click for the forwarded checkbox. Replay
+  therefore toggled the box twice, leaving a recorded "check the box" as
+  UNCHECKED (and a `<label for="submitBtn">` submitted the form twice). The
+  click handler now skips `<label>` targets — a label is a non-interactive
+  forwarder, and the forwarded control's own click/change is captured
+  separately, so exactly one step is recorded.
+- **date/time/datetime-local/month/week/color/range input values dropped during
+  recording**: the change handler only emitted a `fill` for text-like inputs
+  (`text|password|email|search|tel|url|number` + textarea); the value-bearing
+  picker types fired `change` but were in neither the fill list nor the
+  checkbox/radio list, so their picked value was silently dropped (a date
+  replayed empty, a color replayed `#000000`). The change handler now captures
+  these as `fill` steps carrying `el.value`, and the click handler skips them so
+  a click does not also emit a value-less click. `file` inputs are intentionally
+  left out (replay needs `setInputFiles`, not `fill`).
+
+### Added
+- **parameterized `goto` urls**: `{{param}}` references in a `goto` step's url
+  are now resolved (no longer rejected) before navigating — the v0.4.0
+  superRefine that blocked `{{param}}` in goto urls is gone, the goto branch
+  substitutes via `injectValue`, and `referencedParamKeys` scans `step.url` so a
+  url ref is declared/required like a fill/select ref. The single most visible
+  hardcoded value in a flow (host/path/environment) can now be parameterized,
+  completing the m2 parameterization story for multi-tenant/staging-vs-prod
+  flows. zod's `.url()` already accepts brace templates; an unresolved url param
+  errors loudly at replay via `resolveParams`/`injectValue`.
+
 ## [0.5.0] - 2026-08-14
 
 ### Fixed

@@ -137,25 +137,26 @@ test("emptyAsset produces a fillable shell", () => {
   assert.ok(shell.recordedAt);
 });
 
-// --- fix-goto-url-param-not-injected -----------------------------------------
+// --- m3_goto_url_param_injection ---------------------------------------------
 //
-// The goto branch in replay uses `step.url` VERBATIM (no `injectValue`, unlike
-// fill/select), and Zod's `.url()` accepts `https://{{host}}/login` — so a
-// `{{param}}` in a url would navigate to a literal-brace URL and fail
-// confusingly. The superRefine on StepSchema now rejects `{{` in a goto url
-// loudly so validate/replay fail fast instead of navigating to a broken URL.
+// The goto branch in replay now substitutes {{param}} refs before navigating
+// (src/replay.ts goto branch calls injectValue), and params.ts
+// referencedParamKeys scans step.url so a url ref is declared/required like a
+// fill/select ref. zod's `.url()` already accepts brace templates
+// (`https://{{host}}/login` parses true), so the schema now ALLOWS {{param}}
+// in goto urls (the v0.4.0 superRefine that rejected them is gone). An
+// unresolved url param errors loudly at replay via resolveParams/injectValue.
 
-test("parseFlowAsset rejects a {{param}} ref in a goto url (but accepts a plain url)", () => {
-  assert.throws(
-    () =>
-      parseFlowAsset({
-        version: "1",
-        name: "x",
-        steps: [{ id: "s1", action: "goto", url: "https://{{host}}/login" }],
-      }),
-    /cannot contain \{\{param\}\} refs/,
+test("parseFlowAsset accepts a {{param}} ref in a goto url (and a plain url)", () => {
+  // A param-injected url is now valid (previously rejected by superRefine).
+  assert.doesNotThrow(() =>
+    parseFlowAsset({
+      version: "1",
+      name: "x",
+      steps: [{ id: "s1", action: "goto", url: "https://{{host}}/login" }],
+    }),
   );
-  // A plain url (no {{) is still accepted — the guard is specific to refs.
+  // A plain url (no {{) is still accepted.
   assert.doesNotThrow(() =>
     parseFlowAsset({
       version: "1",

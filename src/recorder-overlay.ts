@@ -63,6 +63,20 @@ export function overlayScript(bindingName: string = EMIT_BINDING): string {
     return String(value).replace(/([^a-zA-Z0-9_-])/g, "\\\\$1");
   }
 
+  // Input types whose .value is captured as a fill at change time: the
+  // text-like types plus the value-bearing pickers (date/time/datetime-local/
+  // month/week/color/range). Shared by the click skip-list (so a click on one
+  // of these does NOT also emit a value-less click — the change handler
+  // captures the value) and the change handler fill condition. file is
+  // intentionally excluded (replay needs setInputFiles, not fill).
+  function isFillType(ty, tag){
+    if (tag === "textarea") return true;
+    return ty === "password" || ty === "text" || ty === "email" || ty === "search"
+      || ty === "tel" || ty === "url" || ty === "number"
+      || ty === "date" || ty === "datetime-local" || ty === "time"
+      || ty === "month" || ty === "week" || ty === "color" || ty === "range";
+  }
+
   // A short, reasonably-stable CSS path. Prefers #id, then a stable-looking
   // class, then tag + :nth-of-type up the tree (capped depth).
   function cssPath(el){
@@ -201,15 +215,23 @@ export function overlayScript(bindingName: string = EMIT_BINDING): string {
       node = node.parentElement; hops++;
     }
     node = node || el;
-    // Only skip inputs the change handler emits for (text-like fill + checkbox/radio
-    // click) plus textarea/select. submit/button/image/reset inputs fire a CLICK
-    // (not change), so they MUST fall through to emit — otherwise a flow that
-    // submits a form via <input type="submit"> silently omits the submit step and
-    // replay never submits the form.
+    // A <label> is a non-interactive forwarder: clicking it dispatches a
+    // click on (or, for checkbox/radio, a change of) the associated control,
+    // which the handlers below capture separately. Emitting a click for the
+    // label TOO double-captures the interaction — e.g. clicking
+    // <label for="chk"> recorded click(label)+click(checkbox), and replay
+    // toggled the box twice, leaving it unchecked. Skip the label; the
+    // forwarded control's own click/change event is captured.
+    if (node.tagName === "LABEL") return;
+    // Only skip inputs the change handler emits for (text-like + picker fill +
+    // checkbox/radio click) plus textarea/select. submit/button/image/reset
+    // inputs fire a CLICK (not change), so they MUST fall through to emit —
+    // otherwise a flow that submits a form via <input type="submit"> silently
+    // omits the submit step and replay never submits the form.
     if (node.tagName === "SELECT" || node.tagName === "TEXTAREA") return;
     if (node.tagName === "INPUT") {
       var ty = (node.getAttribute("type") || "text").toLowerCase();
-      if (ty === "password" || ty === "text" || ty === "email" || ty === "search" || ty === "tel" || ty === "url" || ty === "number" || ty === "checkbox" || ty === "radio") return;
+      if (isFillType(ty, "input") || ty === "checkbox" || ty === "radio") return;
     }
     emit({ action: "click", target: bundle(node), label: labelFor(node, "click") });
   }, true);
@@ -222,7 +244,7 @@ export function overlayScript(bindingName: string = EMIT_BINDING): string {
       emit({ action: "select", target: bundle(el), value: el.value, label: labelFor(el, "select") });
     } else if (tag === "input" || tag === "textarea") {
       var ty = (el.getAttribute("type") || "text").toLowerCase();
-      if (ty === "password" || ty === "text" || ty === "email" || ty === "search" || ty === "tel" || ty === "url" || ty === "number" || tag === "textarea") {
+      if (isFillType(ty, tag)) {
         emit({ action: "fill", target: bundle(el), value: el.value, label: labelFor(el, "fill") });
       } else if (ty === "checkbox" || ty === "radio") {
         emit({ action: "click", target: bundle(el), label: labelFor(el, "toggle") });

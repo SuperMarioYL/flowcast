@@ -43,13 +43,18 @@ export function parseParamPairs(pairs: readonly string[]): ParamValues {
 /** Every distinct `{{param}}` key referenced anywhere in the asset's steps. */
 export function referencedParamKeys(asset: FlowAsset): string[] {
   const keys = new Set<string>();
-  for (const step of asset.steps) {
-    if (typeof step.value === "string") {
-      for (const match of step.value.matchAll(PARAM_REF)) {
-        const key = match[1];
-        if (key) keys.add(key);
-      }
+  const collect = (s: string | undefined): void => {
+    if (typeof s !== "string") return;
+    for (const match of s.matchAll(PARAM_REF)) {
+      const key = match[1];
+      if (key) keys.add(key);
     }
+  };
+  for (const step of asset.steps) {
+    collect(step.value);
+    // goto urls may also carry {{param}} refs (resolved at replay time), so a
+    // url ref is declared/required/resolved exactly like a fill/select ref.
+    if (step.action === "goto") collect(step.url);
   }
   return [...keys];
 }

@@ -333,3 +333,96 @@ test("replayAsset injects params into extract step value (attribute name)", asyn
     server.close();
   }
 });
+
+// --- m3_goto_url_param_injection --------------------------------------------
+//
+// A goto url with a {{param}} ref is now substituted before navigating (the
+// v0.4.0 superRefine that rejected {{param}} in goto urls is gone, and
+// referencedParamKeys scans step.url so the ref is required). The fixture port
+// is dynamic, so the url uses {{port}}; supplying it via --param and reading
+// back #title proves the browser actually landed on the parameterized URL.
+
+test("replayAsset injects params into a goto url and navigates", async (t) => {
+  if (!(await chromiumAvailable())) {
+    t.skip("Chromium not installed (run: npx playwright install chromium)");
+    return;
+  }
+  const { server, url } = await startFixture();
+  try {
+    const port = String((server.address() as AddressInfo).port);
+    // Sanity: the fixture url the recorder would have captured.
+    assert.equal(url, `http://127.0.0.1:${port}/`);
+    const asset: FlowAsset = {
+      version: "1",
+      name: "fixture-goto-param",
+      params: [{ key: "port", required: true }],
+      steps: [
+        { id: "s1", action: "goto", url: `http://127.0.0.1:{{port}}/` },
+        { id: "s2", action: "extract", target: { css: "#title" } },
+      ],
+    };
+    const result = await replayAsset(asset, {
+      params: { port },
+      headless: true,
+      log: () => {},
+    });
+    assert.equal(result.ok, true);
+    assert.equal(
+      result.extracted.s2,
+      "Login",
+      "goto must substitute {{port}} and land on the fixture",
+    );
+  } finally {
+    server.close();
+  }
+});
+
+// --- m2_value_bearing_input_changes_dropped (replay round-trip) -------------
+//
+// The recorder now captures a date change as a fill step; this proves that
+// captured fill step, when replayed, reproduces the value: the date input's
+// change handler writes its value to #out, which the extract step reads back.
+
+test("replayAsset fills a date input and the picked value round-trips", async (t) => {
+  if (!(await chromiumAvailable())) {
+    t.skip("Chromium not installed (run: npx playwright install chromium)");
+    return;
+  }
+  const html = `<!doctype html><html><body>
+  <input id="d" type="date" onchange="document.getElementById('out').textContent=this.value" />
+  <span id="out"></span>
+</body></html>`;
+  const server = createServer((_req, res) => {
+    res.writeHead(200, { "content-type": "text/html" });
+    res.end(html);
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const port = (server.address() as AddressInfo).port;
+  const url = `http://127.0.0.1:${port}/`;
+  try {
+    const asset: FlowAsset = {
+      version: "1",
+      name: "fixture-date",
+      params: [],
+      steps: [
+        { id: "s1", action: "goto", url },
+        {
+          id: "s2",
+          action: "fill",
+          target: { css: "#d" },
+          value: "2026-08-29",
+        },
+        { id: "s3", action: "extract", target: { css: "#out" } },
+      ],
+    };
+    const result = await replayAsset(asset, { headless: true, log: () => {} });
+    assert.equal(result.ok, true);
+    assert.equal(
+      result.extracted.s3,
+      "2026-08-29",
+      "the date fill must set the value (round-trip)",
+    );
+  } finally {
+    server.close();
+  }
+});

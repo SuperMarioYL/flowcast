@@ -46,6 +46,19 @@ test("referencedParamKeys finds all {{refs}}", () => {
   assert.deepEqual(referencedParamKeys(a).sort(), ["account", "pass"]);
 });
 
+// --- m3_goto_url_param_injection ---------------------------------------------
+// referencedParamKeys now also scans goto step urls so a url ref is declared
+// and required exactly like a fill/select value ref.
+test("referencedParamKeys includes {{param}} refs in goto urls", () => {
+  const a = asset({
+    steps: [
+      { id: "s1", action: "goto", url: "https://{{host}}/login" },
+      { id: "s2", action: "fill", target: { css: "#u" }, value: "{{account}}" },
+    ],
+  });
+  assert.deepEqual(referencedParamKeys(a).sort(), ["account", "host"]);
+});
+
 test("resolveParams seeds defaults then applies overrides", () => {
   const a = asset({
     params: [

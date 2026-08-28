@@ -153,8 +153,14 @@ async function runStep(
   const t = step.timeoutMs ?? timeoutMs;
 
   if (step.action === "goto") {
-    log(`→ ${step.id} goto ${step.url}`);
-    await page.goto(step.url!, { timeout: t, waitUntil: "domcontentloaded" });
+    // Substitute {{param}} refs (e.g. `https://{{host}}/login`) before
+    // navigating — goto urls are now parameterizable like fill/select values
+    // (see src/asset.ts StepSchema + src/params.ts referencedParamKeys). An
+    // unresolved ref throws here via injectValue rather than navigating to a
+    // literal-brace URL.
+    const url = injectValue(step.url!, values);
+    log(`→ ${step.id} goto ${url}`);
+    await page.goto(url, { timeout: t, waitUntil: "domcontentloaded" });
     return { healed: false };
   }
 

@@ -1,5 +1,6 @@
 {
   "schema": 1,
+  "content_version": "v0.6.0",
   "name": "flowcast",
   "github": "https://github.com/SuperMarioYL/flowcast",
   "host": "flowcast.lei6393.com",
