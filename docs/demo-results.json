@@ -1,0 +1,17 @@
+{
+  "version": "0.6.0",
+  "scope": "Real headless Chromium replay against a temporary loopback HTML form: parameter injection, fill, click and extraction. No remote website or LLM healing.",
+  "inputs": [
+    {
+      "path": "examples/presentation-demo.mjs",
+      "sha256": "c91cd7884cc51e636706a3b656db6fe78a1508ddd1b6ed54cd12dac12a6010de"
+    }
+  ],
+  "steps": [
+    {
+      "command": "node examples/presentation-demo.mjs",
+      "output": "{\n  \"ok\": true,\n  \"stepsRun\": 4,\n  \"extracted\": {\n    \"result\": \"Hello, Lin\"\n  },\n  \"healed\": false\n}\n",
+      "exit_code": 0
+    }
+  ]
+}

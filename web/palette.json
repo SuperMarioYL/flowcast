@@ -1,0 +1,38 @@
+{
+  "mode": "auto",
+  "id": "e66756-e7bb6a-f6acbf-dad732999c0e",
+  "identity": "https://github.com/supermarioyl/flowcast",
+  "primary": "#e66756",
+  "secondary": "#e7bb6a",
+  "highlight": "#f6acbf",
+  "dark": {
+    "bg": "#0a070d",
+    "panel": "#131117",
+    "code": "#140e13",
+    "ink": "#fdeef2",
+    "muted": "#b2a0a8",
+    "line": "#3a1c1d",
+    "primary": "#e66756",
+    "secondary": "#e7bb6a",
+    "highlight": "#f6acbf",
+    "accent": "#e66756",
+    "buttonStart": "#c05648",
+    "buttonEnd": "#8d7341",
+    "buttonText": "#ffffff"
+  },
+  "light": {
+    "bg": "#fefaf9",
+    "panel": "#fef7f7",
+    "code": "#fdf4f3",
+    "ink": "#27181c",
+    "muted": "#72616b",
+    "line": "#f7d1cb",
+    "primary": "#b75245",
+    "secondary": "#876d3e",
+    "highlight": "#916571",
+    "accent": "#b75245",
+    "buttonStart": "#c05648",
+    "buttonEnd": "#8d7341",
+    "buttonText": "#ffffff"
+  }
+}

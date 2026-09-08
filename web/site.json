@@ -1,68 +1,236 @@
 {
-  "schema": 1,
-  "content_version": "v0.6.0",
-  "name": "flowcast",
+  "schema": 3,
+  "name": "FlowCast",
   "github": "https://github.com/SuperMarioYL/flowcast",
   "host": "flowcast.lei6393.com",
-  "lang": { "primary": "zh", "toggle": true },
-  "accent": ["#5e5ce6", "#0071e3", "#10a37f"],
+  "palette": "auto",
+  "lang": {
+    "primary": "zh",
+    "toggle": true
+  },
+  "meta": {
+    "visual_profile": "neon-particle",
+    "content_version": "0.6.0",
+    "demo_source": "docs/demo-results.json"
+  },
   "hero": {
-    "eyebrow": { "zh": "录一次 · 永久重放 · 改版自愈", "en": "Record once · Replay forever · Self-heals on change" },
+    "eyebrow": {
+      "zh": "录制、编辑和重放带参数的浏览器流程，用结构化资产保存步骤与定位线索。",
+      "en": "Record, edit and replay parameterized browser flows with steps and locator clues stored in a structured asset."
+    },
     "headline": {
-      "zh": "把一次浏览器走查\n变成永远能重放的能力",
-      "en": "Turn one browser walkthrough\ninto a capability you can replay forever"
+      "zh": "把浏览器操作留成可重放的流程。",
+      "en": "Keep browser actions as replayable flows."
     },
     "sub": {
-      "zh": "录一次人工流程，结晶成参数化资产；从输入到提交按钮全程捕获，站点改版时用你自己的 key 自动重定位，修好就存盘——不再每次重新推理。",
-      "en": "Record a human flow once into a parameterized asset; every interaction — fills, clicks, submit buttons — is captured. When the site changes it re-locates with your own key and saves the fix — no re-inference every run."
+      "zh": "录制、编辑和重放带参数的浏览器流程，用结构化资产保存步骤与定位线索。",
+      "en": "Record, edit and replay parameterized browser flows with steps and locator clues stored in a structured asset."
     },
-    "command": "npx flowcast record ./login.flow.json",
-    "cta": { "zh": "开始录制", "en": "Start recording" },
-    "ctaGithub": { "zh": "在 GitHub 查看", "en": "View on GitHub" },
-    "scroll": { "zh": "看看它怎么做到", "en": "See how it works" }
+    "href": "#quickstart",
+    "cta": {
+      "zh": "运行示例",
+      "en": "Run the example"
+    },
+    "ctaGithub": {
+      "zh": "查看源码",
+      "en": "View source"
+    }
+  },
+  "scene": {
+    "kind": "neon-graph",
+    "caption": {
+      "zh": "图示展示组件关系；实际输出见下方示例。",
+      "en": "An illustrative component scene; recorded output appears below."
+    },
+    "fallback": "/assets/presentation/scene-dark.svg",
+    "fallbackLight": "/assets/presentation/scene-light.svg"
   },
   "advantages": [
     {
-      "title": { "zh": "录一次，永久重放", "en": "Record once, replay forever" },
-      "body": {
-        "zh": "人工走一遍流程，自动结晶成可复用资产；从输入框到提交按钮全程录制，重放零推理调用，每次确定性跑通。",
-        "en": "Walk through a flow once; it becomes a reusable asset. Every interaction — fills, clicks, even submit buttons — is captured. Replay makes zero inference calls, deterministic every time."
+      "title": {
+        "zh": "保留步骤",
+        "en": "Keep the steps"
       },
-      "chips": ["› 零 LLM 重放", "› 表单全程录制", "› 参数化 {{param}}"]
+      "body": {
+        "zh": "JSON 资产能进入代码审阅。",
+        "en": "JSON assets can be reviewed in code."
+      }
     },
     {
-      "title": { "zh": "改版自愈，修好就留住", "en": "Self-heals — and keeps the fix" },
-      "body": {
-        "zh": "selector 漂移时，用你自己的 key 对实时 DOM 重定位；修好的定位当场存盘，哪怕后面的步骤失败也不丢。话多的模型、模糊的定位都不再让自愈静默翻车。",
-        "en": "When a selector drifts, it re-locates against the live DOM with your own key and saves the fix on the spot — even if a later step then fails. Chatty models and ambiguous matches no longer break heal silently."
+      "title": {
+        "zh": "替换输入",
+        "en": "Change the inputs"
       },
-      "chips": ["› 用你自己的 key", "› 修好即存盘不丢"]
+      "body": {
+        "zh": "参数覆盖可复用相同步骤。",
+        "en": "Parameter overrides reuse the same steps."
+      }
     },
     {
-      "title": { "zh": "本地编辑，全流程参数化", "en": "Parameterize your whole flow locally" },
-      "body": {
-        "zh": "本地 UI 把硬编码值改成 {{param}}、删多余步、声明参数；连提取的属性名也能参数化，重放时自动注入。关掉标签或 Ctrl-C 都能干净退出。",
-        "en": "A local UI turns hard-coded values into {{param}}, prunes steps, declares params — even the attribute an extract step reads can be parameterized and injected at replay. Closing the tab or Ctrl-C exits cleanly."
+      "title": {
+        "zh": "明确修复时机",
+        "en": "Explicit repair"
       },
-      "chips": ["› 本地编辑器", "› 连提取也可参数化", "› 关标签即干净退出"]
-    },
-    {
-      "title": { "zh": "CI 里校验，资产即制品", "en": "Lint assets in CI" },
       "body": {
-        "zh": "不启浏览器、不调 LLM 即校验 .flow.json 结构与参数，无效则非零退出——把流程资产当一等制品管理。",
-        "en": "Validate a .flow.json's structure and params with no browser and no LLM — non-zero exit on failure, so flows are first-class artifacts you can gate in CI."
-      },
-      "chips": ["› 零成本 lint", "› CI 友好退出码"]
+        "zh": "定位失败时才选择模型修复。",
+        "en": "Choose model repair when locator resolution fails."
+      }
     }
   ],
-  "scene": { "kind": "particle-field" },
-  "cta": {
-    "headline": { "zh": "录一次，告别每次重推", "en": "Record once. Stop re-inferring every run." },
-    "sub": {
-      "zh": "把今天的演示，变成明天还能跑的能力。",
-      "en": "Turn today's demo into a capability that still runs tomorrow."
+  "story": {
+    "intro": {
+      "title": {
+        "zh": "解决什么问题",
+        "en": "The task it solves"
+      },
+      "body": {
+        "zh": "登录、填表和提取内容等重复操作，通常包含固定步骤与少量变化参数。FlowCast 把步骤保存为 .flow.json，把输入作为参数注入，方便重跑和审阅。页面变化时先尝试已有定位线索，全部失败后才进入可选的模型修复路径。",
+        "en": "Repeated logins, forms and extraction tasks often share fixed steps with a few changing inputs. FlowCast saves steps in .flow.json and injects input parameters for repeatable review and execution. When a page changes, replay first tries existing locator clues; optional model repair follows only after those fail."
+      }
     },
-    "button": { "zh": "开始录制", "en": "Start recording" }
+    "sections": [
+      {
+        "title": {
+          "zh": "从输入到结果",
+          "en": "From input to result"
+        },
+        "body": {
+          "zh": "自包含脚本提供完整 HTML 与四步资产，注入 name=Lin 后填写表单并提取结果。没有调用 LLM，也未验证远端网站或自动修复。",
+          "en": "A self-contained script supplies complete HTML and a four-step asset, injects name=Lin, fills the form and extracts the result. It uses no LLM and does not validate remote sites or healing."
+        },
+        "image": {
+          "light": "/assets/presentation/process-light.svg",
+          "dark": "/assets/presentation/process-dark.svg",
+          "alt": {
+            "zh": "自包含脚本提供完整 HTML 与四步资产，注入 name=Lin 后填写表单并提取结果。没有调用 LLM，也未验证远端网站或自动修复。",
+            "en": "A self-contained script supplies complete HTML and a four-step asset, injects name=Lin, fills the form and extracts the result. It uses no LLM and does not validate remote sites or healing."
+          }
+        }
+      },
+      {
+        "title": {
+          "zh": "工作原理",
+          "en": "How it works"
+        },
+        "body": {
+          "zh": "asset.ts 的 Zod schema 定义动作、参数与 SelectorBundle。record 捕获浏览器操作，params 解析变量，replay 用 Playwright 执行 goto/fill/click/select/waitFor/extract。heal 将 DOM 与线索提交给配置的模型并记录 healHistory；编辑器在本地提供资产修改界面。",
+          "en": "The Zod schema in asset.ts defines actions, parameters and SelectorBundle. record captures browser actions, params resolves variables and replay executes goto/fill/click/select/waitFor/extract through Playwright. heal submits DOM and clues to the configured model and records healHistory; the local editor updates assets."
+        },
+        "image": {
+          "light": "/assets/presentation/architecture-light.svg",
+          "dark": "/assets/presentation/architecture-dark.svg",
+          "alt": {
+            "zh": "asset.ts 的 Zod schema 定义动作、参数与 SelectorBundle。record 捕获浏览器操作，params 解析变量，replay 用 Playwright 执行 goto/fill/click/select/waitFor/extract。heal 将 DOM 与线索提交给配置的模型并记录 healHistory；编辑器在本地提供资产修改界面。",
+            "en": "The Zod schema in asset.ts defines actions, parameters and SelectorBundle. record captures browser actions, params resolves variables and replay executes goto/fill/click/select/waitFor/extract through Playwright. heal submits DOM and clues to the configured model and records healHistory; the local editor updates assets."
+          }
+        }
+      },
+      {
+        "title": {
+          "zh": "能力与接入",
+          "en": "Capabilities and integration"
+        },
+        "body": {
+          "zh": "正常重放无需模型。record 与 edit 需要交互式浏览器；validate 只检查资产结构与参数。启用 heal 后，页面 DOM 会发送给所配置的 Chat Completions 服务。",
+          "en": "Normal replay needs no model. record and edit use an interactive browser; validate checks asset structure and parameters only. With heal enabled, page DOM is sent to the configured Chat Completions service."
+        },
+        "image": {
+          "light": "/assets/presentation/integrations-light.svg",
+          "dark": "/assets/presentation/integrations-dark.svg",
+          "alt": {
+            "zh": "正常重放无需模型。record 与 edit 需要交互式浏览器；validate 只检查资产结构与参数。启用 heal 后，页面 DOM 会发送给所配置的 Chat Completions 服务。",
+            "en": "Normal replay needs no model. record and edit use an interactive browser; validate checks asset structure and parameters only. With heal enabled, page DOM is sent to the configured Chat Completions service."
+          }
+        }
+      }
+    ],
+    "details": [
+      {
+        "title": {
+          "zh": "使用方式",
+          "en": "Usage"
+        },
+        "body": {
+          "zh": "正常重放无需模型。record 与 edit 需要交互式浏览器；validate 只检查资产结构与参数。启用 heal 后，页面 DOM 会发送给所配置的 Chat Completions 服务。",
+          "en": "Normal replay needs no model. record and edit use an interactive browser; validate checks asset structure and parameters only. With heal enabled, page DOM is sent to the configured Chat Completions service."
+        }
+      },
+      {
+        "title": {
+          "zh": "配置",
+          "en": "Configuration"
+        },
+        "body": {
+          "zh": "自愈读取 `FLOWCAST_LLM_API_KEY`（或 OPENAI_API_KEY）、`FLOWCAST_LLM_BASE_URL` 与 `FLOWCAST_LLM_MODEL`。步骤可设置 timeoutMs；冗余线索包括 CSS、XPath、role/name、text 与结构位置。示例不含私有凭证；实际资产中的填充值应自行检查。",
+          "en": "Healing reads `FLOWCAST_LLM_API_KEY` (or OPENAI_API_KEY), `FLOWCAST_LLM_BASE_URL` and `FLOWCAST_LLM_MODEL`. Steps accept timeoutMs and redundant CSS, XPath, role/name, text and structural clues. The example contains no private credentials; inspect values in real recorded assets."
+        }
+      }
+    ]
   },
-  "footer": { "tag": { "zh": "Apache-2.0 · 本地优先 · 你的 LLM key", "en": "Apache-2.0 · Local-first · Your own LLM key" } }
+  "demo": {
+    "title": {
+      "zh": "实际运行结果",
+      "en": "Actual demo output"
+    },
+    "note": {
+      "zh": "自包含脚本提供完整 HTML 与四步资产，注入 name=Lin 后填写表单并提取结果。没有调用 LLM，也未验证远端网站或自动修复。",
+      "en": "A self-contained script supplies complete HTML and a four-step asset, injects name=Lin, fills the form and extracts the result. It uses no LLM and does not validate remote sites or healing."
+    },
+    "source": "https://github.com/SuperMarioYL/flowcast/blob/main/docs/demo-results.json",
+    "steps": [
+      {
+        "label": {
+          "zh": "重放本地表单",
+          "en": "Replay the local form"
+        },
+        "body": {
+          "zh": "返回 ok=true、stepsRun=4 与 Hello, Lin。",
+          "en": "Returns ok=true, stepsRun=4 and Hello, Lin."
+        },
+        "command": "node examples/presentation-demo.mjs",
+        "output": "{\n  \"ok\": true,\n  \"stepsRun\": 4,\n  \"extracted\": {\n    \"result\": \"Hello, Lin\"\n  },\n  \"healed\": false\n}\n",
+        "image": "/assets/presentation/demo-0-light.svg",
+        "imageDark": "/assets/presentation/demo-0-dark.svg"
+      }
+    ]
+  },
+  "quickstart": {
+    "title": {
+      "zh": "从完整输入开始",
+      "en": "Start with complete input"
+    },
+    "body": {
+      "zh": "需要 Node.js 22+ 和 Chromium。演示启动临时本地 HTTP 服务，使用真实无头浏览器访问，不需要远端站点。",
+      "en": "Requires Node.js 22+ and Chromium. The example starts a temporary local HTTP server and uses a real headless browser, without a remote site."
+    },
+    "steps": [
+      {
+        "title": {
+          "zh": "安装",
+          "en": "Install"
+        },
+        "code": "git clone https://github.com/SuperMarioYL/flowcast.git\ncd flowcast\nnpm ci\nnpm run build\nnpx playwright install chromium"
+      },
+      {
+        "title": {
+          "zh": "运行自带示例",
+          "en": "Run the supplied example"
+        },
+        "code": "node examples/presentation-demo.mjs"
+      }
+    ]
+  },
+  "limitations": [
+    {
+      "zh": "页面布局、认证和业务逻辑变化都可能使资产失效，重放或模型修复不保证永久成功。",
+      "en": "Layout, authentication and business-logic changes can invalidate an asset; replay and model repair do not guarantee permanent success."
+    },
+    {
+      "zh": "演示仅测试本地表单重放，没有测试录制 UI 或实际模型修复。",
+      "en": "The demo tests local-form replay, not the recording UI or live-model repair."
+    }
+  ],
+  "footer": {
+    "tag": "0.6.0 · Node.js 22+ · Apache-2.0"
+  }
 }

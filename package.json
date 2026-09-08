@@ -1,7 +1,7 @@
 {
   "name": "flowcast",
   "version": "0.6.0",
-  "description": "Record a browser walkthrough once, replay it forever, self-heal when the site changes — a parameterized, self-healing flow-asset primitive for browser Agents.",
+  "description": "Capture browser walkthroughs as parameterized flow assets, validate and replay them with Playwright, and optionally repair missed selectors with an LLM.",
   "type": "module",
   "license": "Apache-2.0",
   "author": "SuperMarioYL",

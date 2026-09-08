@@ -1,0 +1,82 @@
+{
+  "name": "FlowCast",
+  "tagline": "Keep browser actions as replayable flows.",
+  "architecture": {
+    "title": "FlowCast / data flow",
+    "nodes": [
+      {
+        "title": "FlowAsset JSON",
+        "detail": "Schema / steps / selectors"
+      },
+      {
+        "title": "Parameter resolution",
+        "detail": "Defaults and overrides"
+      },
+      {
+        "title": "Playwright replay",
+        "detail": "Ordered browser actions"
+      },
+      {
+        "title": "Extracted results",
+        "detail": "Values / optional heal history"
+      }
+    ],
+    "edges": [
+      [
+        0,
+        1
+      ],
+      [
+        1,
+        2
+      ],
+      [
+        2,
+        3
+      ]
+    ]
+  },
+  "process": {
+    "title": "FlowCast / example workflow",
+    "steps": [
+      {
+        "title": "Open local form",
+        "detail": "Loopback HTML fixture"
+      },
+      {
+        "title": "Inject a parameter",
+        "detail": "Name = Lin"
+      },
+      {
+        "title": "Fill and click",
+        "detail": "Production replay path"
+      },
+      {
+        "title": "Extract greeting",
+        "detail": "Hello, Lin"
+      }
+    ],
+    "result": "Four real browser steps complete with the expected greeting and no healing."
+  },
+  "integrations": {
+    "title": "FlowCast / supported routes",
+    "items": [
+      {
+        "title": "Chromium",
+        "detail": "Playwright runtime"
+      },
+      {
+        "title": "FlowAsset JSON",
+        "detail": "Reusable steps and params"
+      },
+      {
+        "title": "Local editor",
+        "detail": "Inspect and edit assets"
+      },
+      {
+        "title": "Optional model API",
+        "detail": "Selector repair"
+      }
+    ]
+  }
+}
