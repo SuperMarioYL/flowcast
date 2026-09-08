@@ -104,6 +104,10 @@
           "alt": {
             "zh": "自包含脚本提供完整 HTML 与四步资产，注入 name=Lin 后填写表单并提取结果。没有调用 LLM，也未验证远端网站或自动修复。",
             "en": "A self-contained script supplies complete HTML and a four-step asset, injects name=Lin, fills the form and extracts the result. It uses no LLM and does not validate remote sites or healing."
+          },
+          "mobile": {
+            "light": "/assets/presentation/process-mobile-light.svg",
+            "dark": "/assets/presentation/process-mobile-dark.svg"
           }
         }
       },
@@ -122,6 +126,10 @@
           "alt": {
             "zh": "asset.ts 的 Zod schema 定义动作、参数与 SelectorBundle。record 捕获浏览器操作，params 解析变量，replay 用 Playwright 执行 goto/fill/click/select/waitFor/extract。heal 将 DOM 与线索提交给配置的模型并记录 healHistory；编辑器在本地提供资产修改界面。",
             "en": "The Zod schema in asset.ts defines actions, parameters and SelectorBundle. record captures browser actions, params resolves variables and replay executes goto/fill/click/select/waitFor/extract through Playwright. heal submits DOM and clues to the configured model and records healHistory; the local editor updates assets."
+          },
+          "mobile": {
+            "light": "/assets/presentation/architecture-mobile-light.svg",
+            "dark": "/assets/presentation/architecture-mobile-dark.svg"
           }
         }
       },
@@ -140,6 +148,10 @@
           "alt": {
             "zh": "正常重放无需模型。record 与 edit 需要交互式浏览器；validate 只检查资产结构与参数。启用 heal 后，页面 DOM 会发送给所配置的 Chat Completions 服务。",
             "en": "Normal replay needs no model. record and edit use an interactive browser; validate checks asset structure and parameters only. With heal enabled, page DOM is sent to the configured Chat Completions service."
+          },
+          "mobile": {
+            "light": "/assets/presentation/integrations-mobile-light.svg",
+            "dark": "/assets/presentation/integrations-mobile-dark.svg"
           }
         }
       }
