@@ -232,5 +232,6 @@
   ],
   "footer": {
     "tag": "0.6.0 · Node.js 22+ · Apache-2.0"
-  }
+  },
+  "content_version": "v0.6.0"
 }
