@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-09-11
+
+### Fixed
+- **`--timeout`/`--port` typos hung replay or crashed edit**: both numeric CLI
+  options were coerced with a bare `Number(v)`, so a value like `--timeout 5s`
+  silently became `NaN`. For `--timeout`, NaN flowed unchecked into Playwright
+  and disabled the per-step timeout entirely — a replay against a missing
+  selector hung forever with no error (verified: >150s with zero progress vs.
+  a ~1s `SelectorMissError` with a valid timeout). For `edit --port`, NaN
+  reached `server.listen(NaN)` and crashed with a raw `RangeError` that never
+  named the flag. Both options now validate as integers at the parsing layer
+  and reject bad input with a readable error naming the flag and the value
+  (`Invalid --timeout "5s": expected a positive integer`). `--timeout 0` is
+  rejected too (it previously insta-failed every step); `--port 0` remains
+  valid (random free port, matching the documented default).
+
+### Added
+- **editor parameterization for `goto` urls and `extract` attribute values**:
+  replay substitutes `{{param}}` on four step surfaces (goto url, fill value,
+  select value, extract attribute), but the editor's editable field +
+  "→ parameterize" pill only covered fill/select — a goto url sat in a
+  disabled input and an extract attribute was not rendered at all, so
+  `url: "{{host}}"` could only be produced by hand-editing the JSON. The
+  editor now renders editable url and attribute fields with the same pill for
+  goto/extract steps, and `parameterize()` writes the `{{key}}` ref into
+  `step.url` for goto steps (auto-declaring the param with the current url as
+  its default). Saves flow through the same Zod validation, so a goto url
+  edited to an invalid value is rejected and the on-disk asset is untouched.
+
+### Changed
+- **package-lock.json version lockstep**: the lockfile's embedded package
+  version (root and `packages.""`) had read `0.1.0` since the first release —
+  five releases stale — and still carried a root `license: MIT` while
+  package.json is Apache-2.0. The lock is regenerated during the v0.7.0
+  lockstep, and a new `test/version.test.ts` asserts the VERSION file,
+  package.json, package-lock.json (both embedded copies), and
+  `web/site.json` `content_version` all agree, plus a matching CHANGELOG
+  section — so no version surface can silently lag again.
+
 ## [0.6.0] - 2026-08-29
 
 ### Fixed
