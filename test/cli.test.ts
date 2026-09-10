@@ -211,3 +211,56 @@ test("runReplayCommand persists earlier-step heals when a later step fails (--wr
 
   await rm(dir, { recursive: true, force: true });
 });
+
+// --- fix-cli-numeric-options-nan ---------------------------------------------
+//
+// `--timeout` and `--port` were coerced with a bare `Number(v)`, so a typo like
+// `--timeout 5s` became NaN. Verified at the v0.6.0 tag: NaN survived
+// `opts.timeoutMs ?? DEFAULT_TIMEOUT` (NaN is not nullish) and flowed into
+// Playwright — a replay against a missing selector hung for >150s with no error
+// (vs. SelectorMissError in ~1s with a valid timeout). `--port abc` crashed
+// `edit` with a raw `RangeError` from server.listen(NaN) that never named the
+// flag. The fix validates at the option-parsing layer, so these tests use
+// commander's parseOptions: a throw here happens BEFORE any action (or browser
+// launch) can run.
+
+test("replay --timeout rejects non-numeric/non-positive input with a flag-naming error", () => {
+  const replay = program.commands.find((c) => c.name() === "replay")!;
+
+  // The plausible typo: a unit suffix. Must throw, naming the flag and value.
+  assert.throws(
+    () => replay.parseOptions(["demo.flow.json", "--timeout", "5s"]),
+    (err: Error) => err.message.includes("--timeout") && err.message.includes("5s"),
+  );
+  assert.throws(() => replay.parseOptions(["demo.flow.json", "--timeout", "abc"]), /--timeout/);
+  // 0 insta-fails every step via resolveLocator's `remaining <= 0` break —
+  // reject it loudly instead.
+  assert.throws(() => replay.parseOptions(["demo.flow.json", "--timeout", "0"]), /--timeout/);
+  assert.throws(
+    () => replay.parseOptions(["demo.flow.json", "--timeout", "10.5"]),
+    /--timeout/,
+  );
+
+  // A valid value still parses through to the option value.
+  replay.parseOptions(["demo.flow.json", "--timeout", "800"]);
+  assert.equal((replay.opts() as { timeout?: number }).timeout, 800);
+});
+
+test("edit --port rejects invalid ports but keeps 0 (random free port) valid", () => {
+  const edit = program.commands.find((c) => c.name() === "edit")!;
+
+  assert.throws(
+    () => edit.parseOptions(["demo.flow.json", "--port", "abc"]),
+    (err: Error) => err.message.includes("--port") && err.message.includes("abc"),
+  );
+  assert.throws(
+    () => edit.parseOptions(["demo.flow.json", "--port", "70000"]),
+    /--port/,
+  );
+
+  // 0 = random free port (the documented default behavior) stays valid.
+  edit.parseOptions(["demo.flow.json", "--port", "0"]);
+  assert.equal((edit.opts() as { port?: number }).port, 0);
+  edit.parseOptions(["demo.flow.json", "--port", "8080"]);
+  assert.equal((edit.opts() as { port?: number }).port, 8080);
+});

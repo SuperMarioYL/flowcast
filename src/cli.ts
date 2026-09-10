@@ -24,6 +24,43 @@ import { readFlowAsset, writeFlowAsset, type FlowAsset } from "./asset.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+/**
+ * Parse a positive-integer CLI option, naming the flag on bad input. A bare
+ * `Number(v)` coercion turned `--timeout 5s` into NaN, which flowed unchecked
+ * into Playwright and silently disabled the per-step timeout (replay hung
+ * forever on a missing selector) — so numeric options are validated HERE, at
+ * the parsing layer, with a readable error naming the flag and the value.
+ * `0` is rejected too: for `--timeout` it insta-fails every step via
+ * resolveLocator's `remaining <= 0` budget break.
+ */
+function parsePositiveInt(flag: string): (value: string) => number {
+  return (value: string): number => {
+    const n = Number(value);
+    if (!Number.isInteger(n) || n <= 0) {
+      throw new Error(`Invalid ${flag} "${value}": expected a positive integer`);
+    }
+    return n;
+  };
+}
+
+/**
+ * Parse a TCP port CLI option. Same rationale as parsePositiveInt: a NaN port
+ * reached `server.listen(NaN)` and crashed `edit` with a raw RangeError that
+ * never named the `--port` flag. Port 0 is allowed (random free port), matching
+ * the documented default behavior.
+ */
+function parsePort(flag: string): (value: string) => number {
+  return (value: string): number => {
+    const n = Number(value);
+    if (!Number.isInteger(n) || n < 0 || n > 65535) {
+      throw new Error(
+        `Invalid ${flag} "${value}": expected an integer between 0 and 65535 (0 = random free port)`,
+      );
+    }
+    return n;
+  };
+}
+
 function readVersion(): string {
   try {
     const pkg = JSON.parse(
@@ -77,7 +114,11 @@ program
     [] as string[],
   )
   .option("--headed", "show the browser while replaying", false)
-  .option("--timeout <ms>", "per-step timeout in milliseconds", (v) => Number(v))
+  .option(
+    "--timeout <ms>",
+    "per-step timeout in milliseconds",
+    parsePositiveInt("--timeout"),
+  )
   .option(
     "--heal",
     "on selector drift, re-locate against the live DOM with your own LLM API key",
@@ -111,7 +152,7 @@ program
   .command("edit")
   .description("Open a local UI to parameterize and prune a .flow.json asset")
   .argument("<asset>", "path to the .flow.json asset")
-  .option("--port <port>", "port for the local editor (default: random free port)", (v) => Number(v))
+  .option("--port <port>", "port for the local editor (default: random free port)", parsePort("--port"))
   .option("--no-open", "do not auto-open the system browser")
   .action(async (assetPath: string, options: { port?: number; open: boolean }) => {
     const handle = await startEditor(assetPath, {
