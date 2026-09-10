@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, readFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -135,6 +135,102 @@ test("editor SIGINT handler resolves done and removes itself on stop", async () 
     // repeated editor sessions (and so the process can exit normally).
     const after = process.listeners("SIGINT").filter((h) => !before.has(h));
     assert.equal(after.length, 0, "SIGINT handler removed after stop");
+  } finally {
+    handle.stop();
+  }
+});
+
+// --- editor-parameterize-goto-url-and-extract-value ---------------------------
+//
+// Replay substitutes {{param}} on four step surfaces (goto url, fill value,
+// select value, extract attr), but the editor rendered an editable field +
+// "→ parameterize" pill ONLY for fill/select: a goto url sat in a disabled
+// input and an extract attribute was not rendered at all — url: "{{host}}"
+// could only be produced by hand-editing the JSON. The fix renders editable
+// fields (data-f="url" / data-f="value") with the same pill for goto and
+// extract steps, and parameterize() writes the ref into step.url for goto.
+
+test("editorHtml renders editable url/attribute fields with parameterize pills for goto and extract steps", () => {
+  const html = editorHtml();
+  // goto steps get an editable url field wired to step.url...
+  assert.match(html, /data-f="url"/, "goto url must be an editable data-f=url field");
+  // ...and extract steps join fill/select in the editable value group.
+  assert.match(
+    html,
+    /s\.action === "fill" \|\| s\.action === "select" \|\| s\.action === "extract"/,
+    "extract steps must render the editable value field",
+  );
+  // parameterize() must write the {{key}} ref into the surface replay
+  // substitutes for that action: step.url for goto, step.value otherwise.
+  assert.match(
+    html,
+    /if \(step\.action === "goto"\) step\.url = "\{\{" \+ key \+ "\}\}";/,
+    "parameterize must write the ref into step.url for goto steps",
+  );
+});
+
+test("editor round-trips an asset with parameterized goto url and extract attribute", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "flowcast-edit-param-"));
+  const path = join(dir, "param.flow.json");
+  // The shape the editor's new url/attribute fields + pills produce.
+  const edited: FlowAsset = {
+    version: "1",
+    name: "param-asset",
+    params: [
+      { key: "host", required: true, default: "127.0.0.1:8080" },
+      { key: "attr", required: true, default: "href" },
+    ],
+    steps: [
+      { id: "s1", action: "goto", url: "http://{{host}}/login" },
+      { id: "s2", action: "fill", target: { css: "#u" }, value: "alice" },
+      { id: "s3", action: "extract", target: { css: "#u" }, value: "{{attr}}" },
+    ],
+  };
+  await writeFlowAsset(path, edited);
+  const handle = await startEditor(path, { open: false, log: () => {} });
+  try {
+    // The editor-produced shape validates and persists (server-side Zod).
+    const res = await fetch(handle.url + "api/asset", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(edited),
+    });
+    const data = (await res.json()) as { ok: boolean; error?: string };
+    assert.equal(data.ok, true, `editor must accept the parameterized asset: ${data.error}`);
+
+    // Disk round-trips the parameterized surfaces.
+    const onDisk = await readFlowAsset(path);
+    assert.equal(onDisk.steps[0]?.url, "http://{{host}}/login");
+    assert.equal(onDisk.steps[2]?.value, "{{attr}}");
+  } finally {
+    handle.stop();
+  }
+  await rm(dir, { recursive: true, force: true });
+});
+
+test("editor rejects a goto url edited to an invalid value (cannot persist a broken asset)", async () => {
+  const path = await tmpAsset();
+  const handle = await startEditor(path, { open: false, log: () => {} });
+  try {
+    const res = await fetch(handle.url + "api/asset", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        ...SAMPLE,
+        steps: [
+          { id: "s1", action: "goto", url: "not a url" },
+          { id: "s2", action: "fill", target: { css: "#u" }, value: "alice" },
+        ],
+      }),
+    });
+    assert.equal(res.status, 400);
+    const data = (await res.json()) as { ok: boolean; error: string };
+    assert.equal(data.ok, false);
+    assert.match(data.error, /url/, "the error must point at the url");
+
+    // The on-disk asset is unchanged by the rejected save.
+    const onDisk = await readFlowAsset(path);
+    assert.equal(onDisk.steps[0]?.url, "https://example.com/login");
   } finally {
     handle.stop();
   }

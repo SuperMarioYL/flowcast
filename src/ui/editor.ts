@@ -310,24 +310,37 @@ function renderSteps() {
   const wrap = $("stepList"); wrap.innerHTML = "";
   asset.steps.forEach((s, i) => {
     const el = document.createElement("div"); el.className = "step";
-    const tgt = s.target ? (s.target.css || s.target.role || s.target.text || "") : (s.url || "");
+    const tgt = s.target ? (s.target.css || s.target.role || s.target.text || "") : "";
+    // Every replay-parameterizable surface is editable here, mirroring what
+    // replay substitutes: fill/select/extract values (data-f="value") and goto
+    // urls (data-f="url"). Element targets stay read-only — parameterization is
+    // for values/urls, not selectors. (v0.7.0: goto urls and extract attribute
+    // names previously had no editable field at all, so url: "{{host}}" could
+    // only be produced by hand-editing the JSON.)
     let valueField = "";
-    if (s.action === "fill" || s.action === "select") {
+    if (s.action === "fill" || s.action === "select" || s.action === "extract") {
       valueField =
-        '<div class="grow"><label>value</label>' +
+        '<div class="grow"><label>'+(s.action === "extract" ? "attribute" : "value")+'</label>' +
         '<input data-f="value" value="'+esc(s.value||"")+'">' +
+        '<span class="pill" data-param="'+i+'">→ parameterize</span></div>';
+    } else if (s.action === "goto") {
+      valueField =
+        '<div class="grow"><label>url</label>' +
+        '<input data-f="url" value="'+esc(s.url||"")+'">' +
         '<span class="pill" data-param="'+i+'">→ parameterize</span></div>';
     }
     el.innerHTML =
       '<div class="row">' +
         '<span class="badge">'+esc(s.action)+'</span>' +
         '<div class="grow"><label>'+esc(s.id)+' · '+esc(s.label||"")+'</label>' +
-          '<input value="'+esc(tgt)+'" disabled></div>' +
+          (s.target ? '<input value="'+esc(tgt)+'" disabled>' : '') + '</div>' +
         valueField +
         '<button class="btn danger" type="button" data-del="'+i+'">delete step</button>' +
       '</div>';
     const valInput = el.querySelector('input[data-f="value"]');
     if (valInput) valInput.addEventListener("input", () => { asset.steps[i].value = valInput.value; });
+    const urlInput = el.querySelector('input[data-f="url"]');
+    if (urlInput) urlInput.addEventListener("input", () => { asset.steps[i].url = urlInput.value; });
     const pill = el.querySelector('[data-param]');
     if (pill) pill.addEventListener("click", () => parameterize(i));
     el.querySelector('[data-del]').addEventListener("click", () => {
@@ -345,9 +358,12 @@ function parameterize(i) {
   if (!key) return;
   if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) { setStatus("Invalid key: "+key, "err"); return; }
   if (!asset.params.some((p) => p.key === key)) {
-    asset.params.push({ key, default: step.value || "", required: true, description: "" });
+    asset.params.push({ key, default: step.value || step.url || "", required: true, description: "" });
   }
-  step.value = "{{" + key + "}}";
+  // goto steps carry the parameterizable value in step.url, every other action
+  // in step.value — write the ref where replay will substitute it.
+  if (step.action === "goto") step.url = "{{" + key + "}}";
+  else step.value = "{{" + key + "}}";
   renderParams(); renderSteps();
 }
 
