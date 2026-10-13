@@ -1,6 +1,6 @@
 {
   "name": "flowcast",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Capture browser walkthroughs as parameterized flow assets, validate and replay them with Playwright, and optionally repair missed selectors with an LLM.",
   "type": "module",
   "license": "Apache-2.0",

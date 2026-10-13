@@ -381,14 +381,33 @@ export function createHealHook(opts: HealOptions = {}): HealHook {
   return {
     async heal(page: Page, step: Step, failed: SelectorBundle) {
       log(`  ⚕ healing "${step.id}" — selector drifted, asking your LLM…`);
-      const candidates = await snapshotCandidates(page, step.action, max);
+      // The HealHook contract is "fresh bundle or null"; replay (src/replay.ts)
+      // re-throws the original SelectorMissError on null. An exception escaping
+      // here would replace that actionable error with a raw infra error — a
+      // chat fetch failure (network / provider 5xx / timeout, see defaultChat)
+      // or a page.evaluate race where a navigation destroys the execution
+      // context mid-snapshot. Convert both into a logged failure + null so the
+      // reason stays visible and replay still reports the selector miss.
+      let candidates: DomCandidate[];
+      try {
+        candidates = await snapshotCandidates(page, step.action, max);
+      } catch (err) {
+        log(`  ⚕ heal failed: could not snapshot the live DOM (${(err as Error).message})`);
+        return null;
+      }
       if (candidates.length === 0) {
         log(`  ⚕ no interactive candidates found on the live DOM — cannot heal`);
         return null;
       }
 
       const prompt = buildHealPrompt(step, failed, candidates);
-      const reply = await chat(prompt);
+      let reply: string;
+      try {
+        reply = await chat(prompt);
+      } catch (err) {
+        log(`  ⚕ heal failed: LLM request did not succeed (${(err as Error).message})`);
+        return null;
+      }
       const choice = parseHealChoice(reply, candidates.length);
       if (!choice) {
         log(`  ⚕ model returned no usable choice — cannot heal`);

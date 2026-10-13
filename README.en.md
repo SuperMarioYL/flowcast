@@ -9,7 +9,7 @@
 
 **Record, edit and replay parameterized browser flows with steps and locator clues stored in a structured asset.**
 
-`v0.6.0` · `Node.js 22+` · [Apache-2.0](LICENSE)
+`v0.8.0` · `Node.js 22+` · [Apache-2.0](LICENSE)
 
 [Website](https://flowcast.lei6393.com) · [Demo record](docs/demo-results.json)
 

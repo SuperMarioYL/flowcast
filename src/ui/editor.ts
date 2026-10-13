@@ -83,6 +83,51 @@ export async function startEditor(
   const server = createServer(async (req, res) => {
     const url = req.url ?? "/";
     try {
+      // Local-origin guard. The editor can rewrite the asset file on disk, and
+      // a page in the user's browser can reach it even though it binds
+      // 127.0.0.1: a CORS "simple request" (content-type text/plain) needs no
+      // preflight, so a malicious site could POST a rewritten asset while the
+      // editor runs (verified: an attacker body was persisted with status
+      // 200); a rebound DNS name pointing at 127.0.0.1 could additionally READ
+      // the asset. Require the Host header to name this server, and POSTs to
+      // carry a matching Origin when one is present (curl / same-origin
+      // requests send none or the editor's own).
+      const bound = server.address();
+      const boundPort =
+        typeof bound === "object" && bound ? bound.port : (opts.port ?? 0);
+      // A browser may address the editor as the bound host or its loopback
+      // equivalents; anything else in Host is a rebinding / proxy attempt.
+      const hostNames = new Set([host.toLowerCase(), "localhost", "127.0.0.1", "[::1]", "::1"]);
+      const hostHeader = (req.headers.host ?? "").toLowerCase();
+      const colon = hostHeader.lastIndexOf(":");
+      const hostOk =
+        colon > 0 &&
+        hostNames.has(hostHeader.slice(0, colon)) &&
+        hostHeader.slice(colon + 1) === String(boundPort);
+      if (!hostOk) {
+        res.writeHead(403, { "content-type": "application/json" });
+        res.end(
+          JSON.stringify({
+            ok: false,
+            error: "Forbidden: Host header does not name this editor server",
+          }),
+        );
+        return;
+      }
+      const origin = req.headers.origin;
+      if (req.method === "POST" && origin !== undefined) {
+        // The editor is plain HTTP; only its exact origin may write.
+        if (origin !== `http://${hostHeader}`) {
+          res.writeHead(403, { "content-type": "application/json" });
+          res.end(
+            JSON.stringify({
+              ok: false,
+              error: `Forbidden: cross-origin write rejected (Origin ${origin})`,
+            }),
+          );
+          return;
+        }
+      }
       if (req.method === "GET" && (url === "/" || url.startsWith("/?"))) {
         res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
         res.end(html);

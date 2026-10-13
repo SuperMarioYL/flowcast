@@ -20,6 +20,12 @@ jobs:
           registry-url: "https://registry.npmjs.org"
       - name: Install dependencies
         run: npm ci
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Type-check
+        run: npm run typecheck
+      - name: Test
+        run: npm test
       - name: Build
         run: npm run build
       - name: Pack tarball into dist/
@@ -38,7 +44,29 @@ jobs:
           path: |
             dist/*.tgz
             dist/checksums.txt
-      # publish_repo.sh attaches dist/* to the GitHub Release.
+      # Attach the tarball + checksums to the GitHub Release itself. The pack
+      # job used to stop at upload-artifact and the publisher assumed this
+      # workflow attached them — each side delegated to the other, so releases
+      # shipped with zero assets (v0.7.0 shipped that way). The release is
+      # created by the publisher right after the tag push, so poll briefly for
+      # it to exist before uploading.
+      - name: Attach artifacts to the GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          for i in $(seq 1 36); do
+            if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              break
+            fi
+            if [ "$i" = "36" ]; then
+              echo "Release $TAG did not appear within 3 minutes" >&2
+              exit 1
+            fi
+            sleep 5
+          done
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber dist/*.tgz dist/checksums.txt
 
   publish-npm:
     runs-on: ubuntu-latest

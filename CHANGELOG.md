@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-14
+
+### Fixed
+- **releases now ship their artifacts**: at v0.7.0 the GitHub Release carried
+  zero assets — the release workflow packed the npm tarball + checksums and
+  stopped at `actions/upload-artifact` (a workflow artifact), while the
+  publisher's local-dist path assumed "release.yml will attach them on the
+  tagged CI run". Each side delegated to the other, so nothing was attached.
+  The release workflow now type-checks and runs the full test suite before
+  packing, waits briefly for the release to exist (it is created right after
+  the tag push), and uploads `dist/*.tgz` + `dist/checksums.txt` to the
+  release with `gh release upload --clobber` (idempotent on re-runs).
+- **`--heal` infra failures no longer mask the selector miss**: the heal
+  hook's contract is "return a fresh bundle or null so replay re-throws the
+  original `SelectorMissError`", but an exception inside the hook escaped —
+  a chat fetch failure (network error, provider 5xx, timeout) or a
+  `page.evaluate` race where a navigation destroyed the execution context
+  mid-snapshot replaced the actionable error with a raw infra message
+  (verified by probe: a throwing `evaluate` rejected `hook.heal` with
+  "Execution context was destroyed"). `createHealHook` now converts both
+  failures into a logged reason plus `null`, so replay still reports the
+  selector miss and the heal-failure cause stays visible.
+
+### Security
+- **the local editor rejects cross-origin writes**: the `flowcast edit`
+  server accepted a cross-origin `POST /api/asset` with `content-type:
+  text/plain` — a CORS simple request needs no preflight, so any web page
+  open in the user's browser could rewrite the `.flow.json` on disk while the
+  editor ran (verified by probe: an attacker asset was persisted with status
+  200); a rebound DNS name pointing at 127.0.0.1 could additionally read the
+  asset. The server now validates the `Host` header against the bound server
+  and rejects POSTs whose `Origin` (when present) is not the editor's own
+  (403). `curl` and same-origin saves are unaffected.
+
 ## [0.7.0] - 2026-09-11
 
 ### Fixed
