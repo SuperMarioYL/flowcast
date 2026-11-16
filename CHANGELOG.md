@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-16
+
+### Fixed
+- **`validate` now checks parameters, as both READMEs promised**: the command
+  only parsed the asset schema and printed `Valid`, so an asset whose replay
+  fails immediately still passed CI. Verified: an asset declaring `account`
+  as required (used by a `fill`) and an asset whose `goto` url is
+  `https://{{host}}/login` with no declared `host` both printed `Valid` and
+  exited 0, while `replay` refused them with `Missing required parameter(s)`.
+  `validate` now runs the same parameter check replay does — required params
+  need a value (default or otherwise) and every `{{key}}` must be declared or
+  defaulted — and exits 1 through the existing `Invalid:` path. No browser and
+  no model are involved.
+- **`--heal` can now see non-interactive targets**: the live-DOM snapshot only
+  collected interactive elements (`a, button, input, select, textarea, [role],
+  [onclick]`) for every action except `fill`/`select`, but `extract` and
+  `waitFor` legitimately target result spans, status divs and table cells.
+  Verified: with a result `<span>` on the page, the candidate list contained
+  only `#q` and `#go`; a stubbed model answer of index 0 healed the `extract`
+  step onto the textbox, the heal was recorded in `healHistory`, and the step
+  then extracted `""` while the run reported success. The snapshot now includes
+  the failed bundle's tag name for `extract`/`waitFor` and orders those matches
+  first, so the real target is a candidate.
+- **`extract` fails loudly when the attribute is gone**: the step coalesced a
+  missing attribute to `""` (`getAttribute(...) ?? ""`), so a site rename such
+  as `href` → `data-href` printed `extract = ""` and `Replay succeeded` with
+  exit 0 — indistinguishable from genuinely empty data. Verified: extracting
+  `href` from a `<span>` reported success with an empty value. A `null`
+  attribute now throws `Attribute "href" not found on the matched element.`
+  Text extraction (no attribute) still returns the trimmed text content.
+- **misspelled `--param` keys are rejected**: overrides were merged blindly, so
+  `replay asset.flow.json --param accuont=alice` on an asset declaring
+  `account` ran with the asset's default and exited 0. Verified against a live
+  replay. The CLI now compares override keys with the asset's declared params
+  plus every `{{key}}` its steps reference and throws
+  `Unknown --param key(s): accuont. This asset declares/uses: account.` before
+  launching a browser.
+
+### Changed
+- **action failures name the step**: errors raised after a selector resolved
+  (hidden element, timeout, detached node, absent extract attribute) now read
+  `Step "s2" (click) failed: <Playwright message>` instead of a bare Playwright
+  message with no step context. Selector misses keep their dedicated
+  `SelectorMissError` and heal semantics.
+
 ## [0.8.0] - 2026-10-14
 
 ### Fixed

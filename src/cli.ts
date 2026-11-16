@@ -17,7 +17,7 @@ import { dirname, join } from "node:path";
 
 import { record } from "./record.js";
 import { replayAsset, type HealHook } from "./replay.js";
-import { parseParamPairs } from "./params.js";
+import { assertKnownOverrides, parseParamPairs, resolveParams } from "./params.js";
 import { createHealHook } from "./heal.js";
 import { startEditor } from "./ui/editor.js";
 import { readFlowAsset, writeFlowAsset, type FlowAsset } from "./asset.js";
@@ -175,9 +175,10 @@ program
 /**
  * Validate a .flow.json asset on disk WITHOUT launching a browser or calling an
  * LLM — reuses the same Zod schema replay reads (parseFlowAsset via
- * readFlowAsset). Returns true (and logs a one-line summary) on a valid asset,
- * false (and prints a readable, path-tagged error to stderr) on an invalid one,
- * so it is safe to wire into CI (non-zero exit on failure).
+ * readFlowAsset) plus the same parameter contract replay enforces
+ * (resolveParams), so CI fails on an asset that replay cannot run. Returns true
+ * (and logs a one-line summary) on a valid asset, false (and prints a readable,
+ * path-tagged error to stderr) on an invalid one.
  */
 export async function validateAssetCommand(
   assetPath: string,
@@ -185,6 +186,10 @@ export async function validateAssetCommand(
 ): Promise<boolean> {
   try {
     const asset = await readFlowAsset(assetPath);
+    // Structure alone is not enough: a required param with no value, or a
+    // `{{key}}` that is neither declared nor defaulted, makes replay fail at
+    // runtime. Checking it here is what both READMEs promise validate does.
+    resolveParams(asset);
     log(
       `Valid: ${assetPath} — ${asset.steps.length} step(s), ${asset.params.length} param(s).`,
     );
@@ -227,6 +232,10 @@ export async function runReplayCommand(
   const params = parseParamPairs(options.param);
   // Load once so healed selectors can be persisted back to the same file.
   const asset = await read(assetPath);
+  // An override key the asset never declares or references cannot take effect;
+  // without this check a typo (`--param accuont=alice`) replays with the
+  // asset's default and exits 0, hiding the misconfiguration from CI.
+  assertKnownOverrides(asset, params);
   // Snapshot each step's healHistory length BEFORE replay. replayAsset
   // re-throws any step error after closing the browser in its `finally`, so the
   // success-gated writeback below would never run when a LATER step fails —

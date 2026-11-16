@@ -52,6 +52,58 @@ test("validateAssetCommand returns false for an invalid asset (goto without url)
   }
 });
 
+// --- fix-validate-ignores-parameters -----------------------------------------
+//
+// validateAssetCommand only parsed the schema, so an asset that replay cannot
+// run (a required param with no value, or a {{ref}} neither declared nor
+// defaulted) still printed "Valid" and exited 0 — contradicting both READMEs'
+// claim that validate checks parameters. These two cases fail before the fix
+// and pass after it.
+
+test("validateAssetCommand rejects a required param that has no value", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "flowcast-validate-"));
+  const path = join(dir, "missing-param.flow.json");
+  try {
+    await writeFile(
+      path,
+      JSON.stringify({
+        version: "1",
+        name: "needs-param",
+        params: [{ key: "account", required: true }],
+        steps: [
+          { id: "s1", action: "goto", url: "https://example.com/login" },
+          { id: "s2", action: "fill", target: { css: "#acct" }, value: "{{account}}" },
+        ],
+      }),
+      "utf8",
+    );
+    const ok = await validateAssetCommand(path, () => {});
+    assert.equal(ok, false);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("validateAssetCommand rejects an undeclared {{ref}} in a goto url", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "flowcast-validate-"));
+  const path = join(dir, "undeclared-ref.flow.json");
+  try {
+    await writeFile(
+      path,
+      JSON.stringify({
+        version: "1",
+        name: "undeclared",
+        steps: [{ id: "s1", action: "goto", url: "https://{{host}}/login" }],
+      }),
+      "utf8",
+    );
+    const ok = await validateAssetCommand(path, () => {});
+    assert.equal(ok, false);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("validateAssetCommand returns false for a missing file", async () => {
   const ok = await validateAssetCommand(
     join(tmpdir(), "flowcast-does-not-exist.flow.json"),

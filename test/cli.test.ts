@@ -264,3 +264,62 @@ test("edit --port rejects invalid ports but keeps 0 (random free port) valid", (
   edit.parseOptions(["demo.flow.json", "--port", "8080"]);
   assert.equal((edit.opts() as { port?: number }).port, 8080);
 });
+
+// --- fix-unknown-param-silently-ignored -------------------------------------
+//
+// resolveParams merged every --param override blindly, so a misspelled key
+// (`--param accuont=alice` on an asset declaring `account`) replayed with the
+// default and exited 0. The CLI now rejects unknown override keys before any
+// browser work happens.
+
+function paramAsset(): FlowAsset {
+  return {
+    version: "1",
+    name: "param-typo",
+    params: [{ key: "account", default: "guest" }],
+    steps: [
+      { id: "s1", action: "goto", url: "https://example.com/login" },
+      { id: "s2", action: "fill", target: { css: "#acct" }, value: "{{account}}" },
+    ],
+  };
+}
+
+test("replay rejects a misspelled --param key before running", async () => {
+  let replayed = false;
+  await assert.rejects(
+    () =>
+      runReplayCommand(
+        "param-typo.flow.json",
+        { param: ["accuont=alice"], headed: false, heal: false, write: true },
+        {
+          read: async () => paramAsset(),
+          replay: (async () => {
+            replayed = true;
+            return { ok: true, stepsRun: 2, extracted: {}, healed: false };
+          }) as unknown as typeof import("../src/replay.js").replayAsset,
+          write: async () => {},
+          makeHeal: () => ({ heal: async () => null }),
+        },
+      ),
+    /Unknown --param key\(s\): accuont\. This asset declares\/uses: account/,
+  );
+  assert.equal(replayed, false, "replay must not start with an unusable override");
+});
+
+test("replay accepts a correctly spelled --param override", async () => {
+  let seen: Record<string, string> | undefined;
+  await runReplayCommand(
+    "param-typo.flow.json",
+    { param: ["account=alice"], headed: false, heal: false, write: true },
+    {
+      read: async () => paramAsset(),
+      replay: (async (_asset: FlowAsset, opts: { params?: Record<string, string> }) => {
+        seen = opts.params;
+        return { ok: true, stepsRun: 2, extracted: {}, healed: false };
+      }) as unknown as typeof import("../src/replay.js").replayAsset,
+      write: async () => {},
+      makeHeal: () => ({ heal: async () => null }),
+    },
+  );
+  assert.deepEqual(seen, { account: "alice" });
+});

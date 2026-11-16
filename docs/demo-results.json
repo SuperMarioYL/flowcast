@@ -1,5 +1,5 @@
 {
-  "version": "0.6.0",
+  "version": "0.9.0",
   "scope": "Real headless Chromium replay against a temporary loopback HTML form: parameter injection, fill, click and extraction. No remote website or LLM healing.",
   "inputs": [
     {

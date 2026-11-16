@@ -232,3 +232,63 @@ test("parseHealChoice survives braces in surrounding prose (balanced scan)", () 
     { index: 0, reason: undefined },
   );
 });
+
+// --- fix-heal-blind-to-noninteractive-targets -------------------------------
+//
+// snapshotCandidates chose its selector from the step ACTION only, so extract /
+// waitFor steps (which legitimately target result spans, status divs, table
+// cells) never had their element in the candidate list. The model was forced to
+// pick an unrelated input, bundleResolves accepted it (it is unique), and the
+// step then acted on the wrong node — an extract yielded "" with no error.
+// The candidate selector now includes the failed bundle's tag and orders those
+// matches first.
+
+const RESULT_HTML = `<!doctype html><html><body>
+  <form><input id="q" placeholder="query" /><button id="go">Go</button></form>
+  <span id="result">Hello, Lin</span>
+</body></html>`;
+
+test("snapshotCandidates includes non-interactive targets for extract steps", async (t) => {
+  if (!(await chromiumAvailable())) {
+    t.skip("Chromium not installed (run: npx playwright install chromium)");
+    return;
+  }
+  const { chromium } = await import("playwright");
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage();
+    await page.setContent(RESULT_HTML);
+    const cands = await snapshotCandidates(page, "extract", 10, "span");
+    const result = cands.find((c) => c.bundle.css === "#result");
+    assert.ok(result, "the result span must be a heal candidate for extract");
+    assert.equal(cands[0]?.bundle.tagName, "span", "failed-tag matches come first");
+  } finally {
+    await browser.close();
+  }
+});
+
+test("heal for an extract step picks the result node, not an unrelated input", async (t) => {
+  if (!(await chromiumAvailable())) {
+    t.skip("Chromium not installed (run: npx playwright install chromium)");
+    return;
+  }
+  const { chromium } = await import("playwright");
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage();
+    await page.setContent(RESULT_HTML);
+    const failed: SelectorBundle = { css: "#old-result", tagName: "span" };
+    const step: Step = { id: "s9", action: "extract", target: failed, label: "read result" };
+    const hook = createHealHook({
+      chat: async () => '{"index": 0, "reason": "the only result span"}',
+      log: () => {},
+    });
+    const fresh = await hook.heal(page, step, failed);
+    assert.ok(fresh, "heal must succeed against the live result span");
+    assert.equal(fresh?.css, "#result");
+    assert.equal(await page.locator(fresh!.css!).textContent(), "Hello, Lin");
+    assert.equal(step.healHistory?.length, 1);
+  } finally {
+    await browser.close();
+  }
+});

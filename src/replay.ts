@@ -178,38 +178,62 @@ async function runStep(
     locator = await resolveLocator(page, step, fresh, t);
   }
 
-  switch (step.action) {
-    case "click": {
-      log(`→ ${step.id} click${step.label ? ` (${step.label})` : ""}`);
-      await locator.click({ timeout: t });
-      break;
+  // Errors raised while ACTING on a resolved element carry no step context —
+  // Playwright reports "locator.click: Timeout 15000ms exceeded" with no hint
+  // of which recorded step failed. Name the step here (selector misses keep
+  // their own SelectorMissError, thrown before this block).
+  try {
+    switch (step.action) {
+      case "click": {
+        log(`→ ${step.id} click${step.label ? ` (${step.label})` : ""}`);
+        await locator.click({ timeout: t });
+        break;
+      }
+      case "fill": {
+        const value = injectValue(step.value ?? "", values);
+        log(`→ ${step.id} fill${step.label ? ` (${step.label})` : ""}`);
+        await locator.fill(value, { timeout: t });
+        break;
+      }
+      case "select": {
+        const value = injectValue(step.value ?? "", values);
+        log(`→ ${step.id} select ${value}`);
+        await locator.selectOption(value, { timeout: t });
+        break;
+      }
+      case "waitFor": {
+        log(`→ ${step.id} waitFor`);
+        await locator.waitFor({ state: "visible", timeout: t });
+        break;
+      }
+      case "extract": {
+        const attr = injectValue(step.value ?? "", values);
+        let out: string;
+        if (attr) {
+          const raw = await locator.getAttribute(attr, { timeout: t });
+          // A null result means the attribute does not exist on the matched
+          // element (e.g. a site rename href→data-href). Reporting "" here made
+          // a vanished attribute indistinguishable from genuinely empty data;
+          // the step must fail instead.
+          if (raw === null) {
+            throw new Error(
+              `Attribute "${attr}" not found on the matched element.`,
+            );
+          }
+          out = raw;
+        } else {
+          out = ((await locator.textContent({ timeout: t })) ?? "").trim();
+        }
+        extracted[step.id] = out;
+        log(`→ ${step.id} extract = ${JSON.stringify(out)}`);
+        break;
+      }
     }
-    case "fill": {
-      const value = injectValue(step.value ?? "", values);
-      log(`→ ${step.id} fill${step.label ? ` (${step.label})` : ""}`);
-      await locator.fill(value, { timeout: t });
-      break;
-    }
-    case "select": {
-      const value = injectValue(step.value ?? "", values);
-      log(`→ ${step.id} select ${value}`);
-      await locator.selectOption(value, { timeout: t });
-      break;
-    }
-    case "waitFor": {
-      log(`→ ${step.id} waitFor`);
-      await locator.waitFor({ state: "visible", timeout: t });
-      break;
-    }
-    case "extract": {
-      const attr = injectValue(step.value ?? "", values);
-      const out = attr
-        ? ((await locator.getAttribute(attr, { timeout: t })) ?? "")
-        : ((await locator.textContent({ timeout: t })) ?? "").trim();
-      extracted[step.id] = out;
-      log(`→ ${step.id} extract = ${JSON.stringify(out)}`);
-      break;
-    }
+  } catch (err) {
+    throw new Error(
+      `Step "${step.id}" (${step.action}) failed: ${(err as Error).message}`,
+      { cause: err },
+    );
   }
   return { healed };
 }

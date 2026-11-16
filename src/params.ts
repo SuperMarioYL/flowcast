@@ -60,6 +60,40 @@ export function referencedParamKeys(asset: FlowAsset): string[] {
 }
 
 /**
+ * Every parameter key the asset can consume: the keys it declares plus every
+ * `{{key}}` referenced by a step value or goto url. Used to reject CLI
+ * overrides that can never take effect (e.g. a misspelled `--param` key), which
+ * would otherwise silently replay with the asset's defaults.
+ */
+export function knownParamKeys(asset: FlowAsset): string[] {
+  return [
+    ...new Set([
+      ...asset.params.map((p) => p.key),
+      ...referencedParamKeys(asset),
+    ]),
+  ];
+}
+
+/**
+ * Throw if an override names a key the asset neither declares nor references.
+ * The check lives here because this module owns parameter semantics; callers
+ * (the replay CLI) pass their parsed overrides in.
+ */
+export function assertKnownOverrides(
+  asset: FlowAsset,
+  overrides: ParamValues,
+): void {
+  const known = knownParamKeys(asset);
+  const knownSet = new Set(known);
+  const unknown = Object.keys(overrides).filter((k) => !knownSet.has(k));
+  if (unknown.length === 0) return;
+  const knownList = known.length > 0 ? known.join(", ") : "(none)";
+  throw new Error(
+    `Unknown --param key(s): ${unknown.join(", ")}. This asset declares/uses: ${knownList}.`,
+  );
+}
+
+/**
  * Merge declared defaults with CLI overrides, then verify completeness:
  * - every `required` declared param must end up with a value;
  * - every `{{param}}` referenced in steps must be resolvable.

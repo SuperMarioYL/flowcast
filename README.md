@@ -9,7 +9,7 @@
 
 **录制、编辑和重放带参数的浏览器流程，用结构化资产保存步骤与定位线索。**
 
-`v0.8.0` · `Node.js 22+` · [Apache-2.0](LICENSE)
+`v0.9.0` · `Node.js 22+` · [Apache-2.0](LICENSE)
 
 [Website](https://flowcast.lei6393.com) · [Demo record](docs/demo-results.json)
 
@@ -60,7 +60,7 @@ node dist/cli.js record login.flow.json --url https://example.com/login
 node dist/cli.js edit login.flow.json
 node dist/cli.js replay login.flow.json --param account=alice
 ```
-录制时请改用你可访问的实际页面。`--headed` 显示重放窗口；`replay --heal --no-write` 在当前运行内修复而不保存资产。参数必须由资产声明或步骤引用，缺少必要参数会报错。
+录制时请改用你可访问的实际页面。`--headed` 显示重放窗口；`replay --heal --no-write` 在当前运行内修复而不保存资产。参数必须由资产声明或步骤引用：缺少必要参数、或传入资产未使用的 `--param` 键都会报错。`extract` 指定的属性不存在时该步骤会失败，不会静默返回空值；动作失败会带上步骤 id。
 
 ## 实际 Demo
 

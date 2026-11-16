@@ -9,7 +9,7 @@
 
 **Record, edit and replay parameterized browser flows with steps and locator clues stored in a structured asset.**
 
-`v0.8.0` · `Node.js 22+` · [Apache-2.0](LICENSE)
+`v0.9.0` · `Node.js 22+` · [Apache-2.0](LICENSE)
 
 [Website](https://flowcast.lei6393.com) · [Demo record](docs/demo-results.json)
 
@@ -60,7 +60,7 @@ node dist/cli.js record login.flow.json --url https://example.com/login
 node dist/cli.js edit login.flow.json
 node dist/cli.js replay login.flow.json --param account=alice
 ```
-Use an accessible real page for recording. `--headed` shows replay; `replay --heal --no-write` repairs only the current run without saving the asset. Required missing parameters produce an error.
+Use an accessible real page for recording. `--headed` shows replay; `replay --heal --no-write` repairs only the current run without saving the asset. Parameters must be declared by the asset or referenced by a step: a missing required value, or a `--param` key the asset does not use, is an error. An `extract` step fails when its attribute is absent instead of silently returning an empty value, and action failures name the step id.
 
 ## Recorded demo
 

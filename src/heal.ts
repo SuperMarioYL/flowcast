@@ -54,22 +54,62 @@ export interface HealOptions {
 
 const DEFAULT_MAX_CANDIDATES = 40;
 
+/** Elements the recorder can act on with fill/select/click. */
+const INTERACTIVE_SELECTOR = "a, button, input, select, textarea, [role], [onclick]";
+
+/**
+ * Selector for the live-DOM candidate snapshot, derived from the step action
+ * AND the failed bundle's tag.
+ *
+ * fill/select stay narrow (only elements those actions can act on). extract and
+ * waitFor may legitimately target non-interactive nodes — a result span, a
+ * status div, a table cell — which the interactive-only list never returned, so
+ * the model was forced to pick an unrelated input and the heal silently bound
+ * the step to the wrong element. For those actions the failed tag is included
+ * (and preferred, see snapshotCandidates).
+ */
+export function candidateSelector(
+  action: Step["action"],
+  failedTag?: string,
+): string {
+  if (action === "fill") return "input, textarea";
+  if (action === "select") return "select";
+  if (
+    (action === "extract" || action === "waitFor") &&
+    failedTag !== undefined &&
+    /^[a-z][a-z0-9-]*$/i.test(failedTag)
+  ) {
+    return `${failedTag.toLowerCase()}, ${INTERACTIVE_SELECTOR}`;
+  }
+  return INTERACTIVE_SELECTOR;
+}
+
 /**
  * Collect interactive elements from the live page and compute a redundant
  * SelectorBundle for each — the same clue shape record-time produces, so a
  * healed bundle is a drop-in replacement. Runs entirely in the page context.
+ *
+ * `failedTag` is the tag of the bundle that stopped resolving; for extract /
+ * waitFor it widens the snapshot beyond interactive elements and orders those
+ * matches first.
  */
 export async function snapshotCandidates(
   page: Page,
   action: Step["action"],
   max: number = DEFAULT_MAX_CANDIDATES,
+  failedTag?: string,
 ): Promise<DomCandidate[]> {
   // The snapshot logic runs in the BROWSER. We ship it as a stringified IIFE
   // (with args inlined as JSON) rather than a normal closure so the dev runner
   // (tsx/esbuild) can't inject Node-only helpers like `__name` into the body —
   // those break once the function crosses into the page context. This mirrors
   // the same string-script pattern recorder-overlay.ts uses for the same reason.
-  const script = `(${snapshotFnSource})(${JSON.stringify(action)}, ${JSON.stringify(max)})`;
+  const selector = candidateSelector(action, failedTag);
+  const preferTag =
+    action === "extract" || action === "waitFor"
+      ? (failedTag?.toLowerCase() ?? null)
+      : null;
+  const script = `(${snapshotFnSource})(${JSON.stringify(max)}, ${JSON.stringify(selector)}, ${JSON.stringify(preferTag)})`;
   const raw = (await page.evaluate(script)) as Array<{
     bundle: Record<string, unknown>;
     text?: string;
@@ -87,7 +127,7 @@ export async function snapshotCandidates(
  * action + candidate cap, returns `{bundle, text}[]` of visible interactive
  * elements with the same redundant clue shape record-time captures.
  */
-const snapshotFnSource = `function(action, max){
+const snapshotFnSource = `function(max, interactiveSel, preferTag){
   function cssEscape(value){
     if (window.CSS && typeof window.CSS.escape === "function") return window.CSS.escape(value);
     return String(value).replace(/([^a-zA-Z0-9_-])/g, "\\\\$1");
@@ -155,11 +195,17 @@ const snapshotFnSource = `function(action, max){
     var s = window.getComputedStyle(el);
     return s.visibility !== "hidden" && s.display !== "none";
   }
-  var interactiveSel = action === "fill" ? "input, textarea"
-    : action === "select" ? "select"
-    : "a, button, input, select, textarea, [role], [onclick]";
   var all = Array.prototype.slice.call(document.querySelectorAll(interactiveSel));
   var els = []; for (var i = 0; i < all.length; i++) { if (visible(all[i])) els.push(all[i]); }
+  // Put the failed target's tag first so the cap cannot crowd out the element
+  // kind we are actually looking for (a page's first 40 nodes may be divs).
+  if (preferTag) {
+    var pref = []; var rest = [];
+    for (var p = 0; p < els.length; p++) {
+      (els[p].tagName.toLowerCase() === preferTag ? pref : rest).push(els[p]);
+    }
+    els = pref.concat(rest);
+  }
   var out = [];
   for (var j = 0; j < els.length && j < max; j++) {
     var el = els[j];
@@ -390,7 +436,7 @@ export function createHealHook(opts: HealOptions = {}): HealHook {
       // reason stays visible and replay still reports the selector miss.
       let candidates: DomCandidate[];
       try {
-        candidates = await snapshotCandidates(page, step.action, max);
+        candidates = await snapshotCandidates(page, step.action, max, failed.tagName);
       } catch (err) {
         log(`  ⚕ heal failed: could not snapshot the live DOM (${(err as Error).message})`);
         return null;

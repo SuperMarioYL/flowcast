@@ -426,3 +426,72 @@ test("replayAsset fills a date input and the picked value round-trips", async (t
     server.close();
   }
 });
+
+// --- fix-extract-absent-attribute-silent-empty ------------------------------
+//
+// extract used `(await getAttribute(attr)) ?? ""`, so an attribute a site
+// rename removed (href → data-href) produced `extract = ""` plus
+// "Replay succeeded" with exit 0 — indistinguishable from genuinely empty data.
+// The step must fail instead, and the error must name the step.
+
+test("extract on an absent attribute fails loudly instead of yielding an empty success", async (t) => {
+  if (!(await chromiumAvailable())) {
+    t.skip("Chromium not installed (run: npx playwright install chromium)");
+    return;
+  }
+  const { server, url } = await startFixture();
+  try {
+    const asset: FlowAsset = {
+      version: "1",
+      name: "fixture-extract-absent-attr",
+      params: [],
+      steps: [
+        { id: "s1", action: "goto", url },
+        // #out is a <span>; it has an id but no href.
+        { id: "s2", action: "extract", target: { css: "#out" }, value: "href" },
+      ],
+    };
+    await assert.rejects(
+      () => replayAsset(asset, { headless: true, log: () => {} }),
+      /Step "s2" \(extract\) failed: Attribute "href" not found/,
+    );
+  } finally {
+    server.close();
+  }
+});
+
+// --- quality-name-failing-step-in-action-errors -----------------------------
+//
+// Selector misses carried a step id, but failures AFTER resolution (hidden,
+// disabled, detached) surfaced a raw Playwright message with no step context.
+// The action block now rethrows with the step id + action.
+
+test("action failures name the failing step and action", async (t) => {
+  if (!(await chromiumAvailable())) {
+    t.skip("Chromium not installed (run: npx playwright install chromium)");
+    return;
+  }
+  const { server, url } = await startFixture();
+  try {
+    const asset: FlowAsset = {
+      version: "1",
+      name: "fixture-hidden-click",
+      params: [],
+      steps: [
+        { id: "s1", action: "goto", url },
+        {
+          id: "s2",
+          action: "click",
+          target: { css: "#panel" },
+          timeoutMs: 300, // #panel exists but is display:none → click times out
+        },
+      ],
+    };
+    await assert.rejects(
+      () => replayAsset(asset, { headless: true, log: () => {} }),
+      /Step "s2" \(click\) failed: /,
+    );
+  } finally {
+    server.close();
+  }
+});
